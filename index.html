@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Miguel Life — Entrar</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/theme-glass.css">
+</head>
+<body>
+  <div class="bg-photo"></div>
+<div class="glow-blob glow-1"></div>
+  <div class="glow-blob glow-2"></div>
+  <div class="glow-blob glow-3"></div>
+  <div class="glow-blob glow-4"></div>
+  <div class="login-page">
+    <div class="login-card card-glass">
+
+      <div class="login-logo">
+        <div class="login-logo-mark">M</div>
+        <h1>Miguel Life</h1>
+        <p>Escritório pessoal do Miguel</p>
+      </div>
+
+      <form class="login-form" id="form-login">
+        <div class="form-group">
+          <label class="form-label" for="email">Email</label>
+          <input class="form-input" type="email" id="email" placeholder="miguel@exemplo.com" autocomplete="email" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="password">Palavra-passe</label>
+          <input class="form-input" type="password" id="password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+
+        <div id="login-error" class="form-error" style="display:none;"></div>
+
+        <button class="btn btn-primary" type="submit" id="btn-login" style="width:100%;margin-top:8px;">
+          <span id="btn-login-text">Entrar</span>
+          <span id="btn-login-spinner" class="spinner" style="display:none;width:16px;height:16px;"></span>
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+  (async () => {
+    const SUPABASE_URL  = 'https://yykxfvaxraqvumzpixjr.supabase.co';
+    const SUPABASE_KEY  = 'sb_publishable_LMWVg87iISuEd8BRDogN0g_amyVMfVx';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Se já tem sessão activa, vai directo ao dashboard
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) window.location.href = 'dashboard.html';
+
+    const form       = document.getElementById('form-login');
+    const errorDiv   = document.getElementById('login-error');
+    const btnTxt     = document.getElementById('btn-login-text');
+    const btnSpinner = document.getElementById('btn-login-spinner');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errorDiv.style.display = 'none';
+      btnTxt.style.display = 'none';
+      btnSpinner.style.display = 'inline-block';
+
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        btnTxt.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+        errorDiv.style.display = 'flex';
+        errorDiv.textContent = error.message === 'Invalid login credentials'
+          ? 'Email ou palavra-passe incorrectos.'
+          : error.message;
+        return;
+      }
+
+      window.location.href = 'dashboard.html';
+    });
+  })();
+  </script>
+</body>
+</html>

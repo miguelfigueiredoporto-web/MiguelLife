@@ -1,0 +1,300 @@
+/* === MAIN LAYOUT === */
+
+/* App shell */
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Content area */
+.main-content {
+  flex: 1;
+  padding: 24px 20px;
+  padding-bottom: calc(var(--nav-height-mobile) + 24px);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* === MOBILE BOTTOM NAV === */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--nav-height-mobile);
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 100;
+  padding: 0 8px;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  text-decoration: none;
+  position: relative;
+  min-width: 52px;
+}
+
+.nav-item:hover { color: var(--text-secondary); text-decoration: none; }
+
+.nav-item.active { color: var(--green); }
+
+.nav-item svg { flex-shrink: 0; }
+
+.nav-label {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* === DESKTOP SIDEBAR === */
+.sidebar {
+  display: none;
+  width: var(--sidebar-width);
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border-subtle);
+  flex-direction: column;
+  padding: 24px 16px;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  margin-bottom: 24px;
+}
+
+.sidebar-logo-mark {
+  width: 32px; height: 32px;
+  background: var(--green);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #000;
+  font-size: 0.9rem;
+}
+
+.sidebar-logo-text {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.sidebar-section {
+  margin-bottom: 8px;
+}
+
+.sidebar-section-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  padding: 0 12px;
+  margin-bottom: 4px;
+  margin-top: 16px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  position: relative;
+}
+
+.sidebar-item:hover {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.sidebar-item.active {
+  background: var(--green-dim);
+  color: var(--green);
+  font-weight: 600;
+}
+
+.sidebar-item svg { flex-shrink: 0; }
+
+.sidebar-bottom {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* === DESKTOP OVERRIDES === */
+@media (min-width: 768px) {
+  .sidebar { display: flex; }
+  .bottom-nav { display: none; }
+
+  .app-shell {
+    padding-left: var(--sidebar-width);
+  }
+
+  .main-content {
+    padding: 32px 32px;
+    padding-bottom: 32px;
+  }
+}
+
+/* === GRID LAYOUTS === */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+@media (min-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+  }
+}
+
+.content-grid {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 1024px) {
+  .content-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+  .content-grid-3 {
+    grid-template-columns: 2fr 1fr;
+  }
+}
+
+/* === LOGIN PAGE === */
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg-base);
+}
+
+.login-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 40px 32px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.login-logo {
+  text-align: center;
+  margin-bottom: 32px;
+}
+
+.login-logo-mark {
+  width: 52px; height: 52px;
+  background: var(--green);
+  border-radius: var(--radius-lg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  color: #000;
+  font-size: 1.3rem;
+  margin-bottom: 12px;
+}
+
+.login-logo h1 {
+  font-size: 1.3rem;
+  color: var(--text-primary);
+}
+
+.login-logo p {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* === PAGE TRANSITIONS === */
+.page-fade {
+  animation: page-in 0.2s ease;
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* === DETAIL PAGE LAYOUT === */
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.detail-header .back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.detail-header .back-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+  text-decoration: none;
+}
+
+/* === RESPONSIVE HELPERS === */
+.hide-mobile  { display: none; }
+.hide-desktop { display: block; }
+
+@media (min-width: 768px) {
+  .hide-mobile  { display: block; }
+  .hide-desktop { display: none; }
+}

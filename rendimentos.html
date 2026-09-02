@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Miguel Life — Rendimentos</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/theme-glass.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+<div class="bg-photo"></div>
+<div class="glow-blob glow-1"></div>
+<div class="glow-blob glow-2"></div>
+<div class="glow-blob glow-3"></div>
+<div class="glow-blob glow-4"></div>
+
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <main class="main-content page-fade">
+
+    <div class="page-header">
+      <h1>Rendimentos</h1>
+      <button class="btn btn-primary btn-sm" id="btn-nova-fonte">
+        <i data-lucide="plus" width="16" height="16"></i>
+        Nova Fonte
+      </button>
+    </div>
+
+    <!-- Totais -->
+    <div class="stats-grid" style="margin-bottom:24px;">
+      <div class="stat-card card-glass">
+        <div class="stat-label">Total Mensal</div>
+        <div class="stat-value text-green">4 850 €</div>
+        <div class="stat-sub">5 fontes activas</div>
+      </div>
+      <div class="stat-card card-glass">
+        <div class="stat-label">Total Anual Estimado</div>
+        <div class="stat-value">58 200 €</div>
+        <div class="stat-sub">antes de impostos</div>
+      </div>
+      <div class="stat-card card-glass">
+        <div class="stat-label">Rendimentos Fixos</div>
+        <div class="stat-value">3 200 €</div>
+        <div class="stat-sub">rendas de imóveis</div>
+      </div>
+      <div class="stat-card card-glass">
+        <div class="stat-label">Rendimentos Variáveis</div>
+        <div class="stat-value">1 650 €</div>
+        <div class="stat-sub">agências + outros</div>
+      </div>
+    </div>
+
+    <!-- Lista de fontes -->
+    <div class="card card-glass" style="margin-bottom:20px;">
+      <div class="card-header">
+        <span class="card-title">Fontes de Rendimento</span>
+      </div>
+
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Fonte</th>
+              <th>Tipo</th>
+              <th>Periodicidade</th>
+              <th style="text-align:right;">Valor Mensal</th>
+              <th style="text-align:right;">Anual</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>
+                <div style="font-weight:500;">Rendas — Imóveis</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Agregado de 4 imóveis</div>
+              </td>
+              <td><span class="tag tag-green">Fixo</span></td>
+              <td>Mensal</td>
+              <td style="text-align:right;" class="font-mono text-green">3 200 €</td>
+              <td style="text-align:right;" class="font-mono">38 400 €</td>
+              <td style="text-align:right;">
+                <button class="btn btn-ghost btn-icon"><i data-lucide="edit-2" width="14" height="14"></i></button>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div style="font-weight:500;">RE/MAX We Go — Distribuição</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Média últimos 6 meses</div>
+              </td>
+              <td><span class="tag tag-yellow">Variável</span></td>
+              <td>Mensal</td>
+              <td style="text-align:right;" class="font-mono text-green">1 200 €</td>
+              <td style="text-align:right;" class="font-mono">14 400 €</td>
+              <td style="text-align:right;">
+                <button class="btn btn-ghost btn-icon"><i data-lucide="edit-2" width="14" height="14"></i></button>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div style="font-weight:500;">RE/MAX Go — Distribuição</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Média últimos 6 meses</div>
+              </td>
+              <td><span class="tag tag-yellow">Variável</span></td>
+              <td>Mensal</td>
+              <td style="text-align:right;" class="font-mono text-green">300 €</td>
+              <td style="text-align:right;" class="font-mono">3 600 €</td>
+              <td style="text-align:right;">
+                <button class="btn btn-ghost btn-icon"><i data-lucide="edit-2" width="14" height="14"></i></button>
+              </td>
+            </tr>
+            <tr>
+              <td>
+                <div style="font-weight:500;">Marca Pessoal</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">Consultorias e palestras</div>
+              </td>
+              <td><span class="tag tag-yellow">Variável</span></td>
+              <td>Irregular</td>
+              <td style="text-align:right;" class="font-mono">150 €</td>
+              <td style="text-align:right;" class="font-mono">1 800 €</td>
+              <td style="text-align:right;">
+                <button class="btn btn-ghost btn-icon"><i data-lucide="edit-2" width="14" height="14"></i></button>
+              </td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr style="background:var(--bg-elevated);">
+              <td colspan="3" style="padding:12px 16px;font-weight:700;">Total</td>
+              <td style="padding:12px 16px;text-align:right;font-weight:700;font-family:monospace;color:var(--green);">4 850 €/mês</td>
+              <td style="padding:12px 16px;text-align:right;font-weight:700;font-family:monospace;">58 200 €/ano</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- Registo histórico mensal -->
+    <div class="card card-glass">
+      <div class="card-header">
+        <span class="card-title">Histórico Real</span>
+        <button class="btn btn-secondary btn-sm" id="btn-registar-mes">
+          <i data-lucide="plus" width="14" height="14"></i>
+          Registar Mês
+        </button>
+      </div>
+      <div class="empty-state" style="padding:32px;">
+        <i data-lucide="bar-chart-2" width="32" height="32"></i>
+        <h3>Sem registos históricos</h3>
+        <p style="font-size:0.82rem;">Regista os valores reais de cada mês para acompanhar a evolução.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<div id="toast-container"></div>
+
+<script src="js/nav.js"></script>
+<script>
+  document.getElementById('btn-nova-fonte').addEventListener('click', () => {
+    alert('Modal nova fonte — a implementar com Supabase');
+  });
+  document.getElementById('btn-registar-mes').addEventListener('click', () => {
+    alert('Registar mês — a implementar com Supabase');
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.lucide) lucide.createIcons();
+  });
+</script>
+
+</body>
+</html>

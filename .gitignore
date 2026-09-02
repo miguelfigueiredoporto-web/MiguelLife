@@ -1,0 +1,6 @@
+# Credenciais — nunca versionar
+.env
+js/config.js
+
+# macOS
+.DS_Store

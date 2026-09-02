@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Miguel Life — Tarefas</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/theme-glass.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+<div class="bg-photo"></div>
+<div class="glow-blob glow-1"></div>
+<div class="glow-blob glow-2"></div>
+<div class="glow-blob glow-3"></div>
+<div class="glow-blob glow-4"></div>
+
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <main class="main-content page-fade">
+
+    <div class="page-header">
+      <h1>Tarefas</h1>
+      <button class="btn btn-primary btn-sm" id="btn-nova-tarefa">
+        <i data-lucide="plus" width="16" height="16"></i>
+        Nova Tarefa
+      </button>
+    </div>
+
+    <!-- Filtros por categoria -->
+    <div class="filter-bar">
+      <button class="filter-chip active" data-cat="todas">Todas</button>
+      <button class="filter-chip" data-cat="agencias">Agências</button>
+      <button class="filter-chip" data-cat="imoveis">Imóveis</button>
+      <button class="filter-chip" data-cat="financas">Finanças</button>
+      <button class="filter-chip" data-cat="marca">Marca Pessoal</button>
+      <button class="filter-chip" data-cat="pessoal">Pessoal</button>
+    </div>
+
+    <!-- Kanban -->
+    <div class="kanban-board">
+
+      <!-- Coluna: Por fazer -->
+      <div class="kanban-column card-glass">
+        <div class="kanban-col-header">
+          <span class="kanban-col-title">Por Fazer</span>
+          <span class="tag tag-muted">3</span>
+        </div>
+        <div id="col-por-fazer">
+
+          <div class="kanban-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span class="tag tag-red">Alta</span>
+              <span style="font-size:0.7rem;color:var(--text-muted);">15 Jun</span>
+            </div>
+            <div style="font-size:0.875rem;font-weight:500;margin-bottom:4px;">Renovar contrato T2 Porto</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Imóveis</div>
+          </div>
+
+          <div class="kanban-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span class="tag tag-red">Alta</span>
+              <span style="font-size:0.7rem;color:var(--text-muted);">30 Jun</span>
+            </div>
+            <div style="font-size:0.875rem;font-weight:500;margin-bottom:4px;">IRS — entrega declaração</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Finanças</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Coluna: Em curso -->
+      <div class="kanban-column card-glass">
+        <div class="kanban-col-header">
+          <span class="kanban-col-title">Em Curso</span>
+          <span class="tag tag-yellow" style="background:var(--yellow-dim);color:var(--yellow);">2</span>
+        </div>
+        <div id="col-em-curso">
+
+          <div class="kanban-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span class="tag tag-yellow">Média</span>
+              <span style="font-size:0.7rem;color:var(--text-muted);"></span>
+            </div>
+            <div style="font-size:0.875rem;font-weight:500;margin-bottom:4px;">Reunião recrutamento WE GO</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Agências</div>
+          </div>
+
+          <div class="kanban-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span class="tag tag-yellow">Média</span>
+              <span style="font-size:0.7rem;color:var(--text-muted);"></span>
+            </div>
+            <div style="font-size:0.875rem;font-weight:500;margin-bottom:4px;">Obras T1 Matosinhos — orçamentos</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Imóveis</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Coluna: Concluída -->
+      <div class="kanban-column card-glass">
+        <div class="kanban-col-header">
+          <span class="kanban-col-title">Concluída</span>
+          <span class="tag tag-green" style="background:var(--green-dim);color:var(--green);">2</span>
+        </div>
+        <div id="col-concluida">
+
+          <div class="kanban-card" style="opacity:0.6;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span class="tag tag-muted">Baixa</span>
+            </div>
+            <div style="font-size:0.875rem;font-weight:500;margin-bottom:4px;text-decoration:line-through;">Actualizar seguros imóveis</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Imóveis</div>
+          </div>
+
+          <div class="kanban-card" style="opacity:0.6;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+              <span class="tag tag-muted">Alta</span>
+            </div>
+            <div style="font-size:0.875rem;font-weight:500;margin-bottom:4px;text-decoration:line-through;">Reunião banco — renegociar taxa</div>
+            <div style="font-size:0.72rem;color:var(--text-muted);">Finanças</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal nova tarefa -->
+<div class="modal-overlay" id="modal-nova-tarefa" style="display:none;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>Nova Tarefa</h2>
+      <button class="btn btn-ghost btn-icon" onclick="document.getElementById('modal-nova-tarefa').style.display='none';document.body.style.overflow='';">
+        <i data-lucide="x" width="18" height="18"></i>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid" style="gap:16px;">
+        <div class="form-group">
+          <label class="form-label">Título</label>
+          <input class="form-input" type="text" placeholder="Descreve a tarefa…">
+        </div>
+        <div class="form-grid form-grid-2">
+          <div class="form-group">
+            <label class="form-label">Categoria</label>
+            <select class="form-select">
+              <option>Agências</option>
+              <option>Imóveis</option>
+              <option>Finanças Pessoais</option>
+              <option>Marca Pessoal</option>
+              <option>Pessoal / Família</option>
+              <option>Outros</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prioridade</label>
+            <select class="form-select">
+              <option>Alta</option>
+              <option>Média</option>
+              <option>Baixa</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data limite (opcional)</label>
+          <input class="form-input" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notas (opcional)</label>
+          <textarea class="form-textarea" placeholder="Notas adicionais…"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="document.getElementById('modal-nova-tarefa').style.display='none';document.body.style.overflow='';">Cancelar</button>
+      <button class="btn btn-primary">Criar Tarefa</button>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<div id="toast-container"></div>
+
+<script src="js/nav.js"></script>
+<script>
+  // Filtros
+  document.querySelectorAll('.filter-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      // TODO: filtrar tarefas por categoria
+    });
+  });
+
+  // Botão nova tarefa
+  document.getElementById('btn-nova-tarefa').addEventListener('click', () => {
+    const modal = document.getElementById('modal-nova-tarefa');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.lucide) lucide.createIcons();
+  });
+</script>
+
+</body>
+</html>

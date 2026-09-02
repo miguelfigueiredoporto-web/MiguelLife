@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Miguel Life — Arrendamentos</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/theme-glass.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    .filtros-bar {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .filtros-bar select {
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      cursor: pointer;
+      min-width: 140px;
+    }
+    .filtros-bar select:focus {
+      outline: none;
+      border-color: var(--green);
+    }
+    .toggle-pendentes {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      user-select: none;
+      margin-left: auto;
+    }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      font-family: inherit;
+    }
+    .status-pill:disabled { cursor: default; }
+    .status-pill.is-loading { opacity: 0.45; }
+    .status-pago      { background: var(--green-dim);  color: var(--green); }
+    .status-pendente  { background: var(--red-dim);    color: var(--red); }
+    .status-atrasado  { background: var(--yellow-dim); color: var(--yellow); }
+    .status-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-photo"></div>
+<div class="glow-blob glow-1"></div>
+<div class="glow-blob glow-2"></div>
+<div class="glow-blob glow-3"></div>
+<div class="glow-blob glow-4"></div>
+
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <main class="main-content page-fade">
+
+    <div class="page-header">
+      <div>
+        <h1>Arrendamentos</h1>
+        <p id="subtitulo" style="color: var(--text-muted); font-size: 0.875rem; margin-top: 4px;">A carregar...</p>
+      </div>
+    </div>
+
+    <!-- Cards de resumo -->
+    <div class="stats-grid" id="stats-grid" style="display:none; margin-bottom: 24px;">
+      <div class="card stat-card card-glass">
+        <div class="stat-label">Imóveis arrendados</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="card stat-card card-glass">
+        <div class="stat-label">Renda bruta mensal</div>
+        <div class="stat-value" style="color: var(--green);" id="stat-renda-bruta">—</div>
+      </div>
+      <div class="card stat-card card-glass">
+        <div class="stat-label">Renda líquida mensal</div>
+        <div class="stat-value" style="color: var(--green);" id="stat-renda-liquida">—</div>
+      </div>
+      <div class="card stat-card card-glass">
+        <div class="stat-label">Imposto mensal estimado</div>
+        <div class="stat-value" style="color: var(--red);" id="stat-imposto">—</div>
+      </div>
+      <div class="card stat-card card-glass">
+        <div class="stat-label">Por receber este mês</div>
+        <div class="stat-value" id="stat-por-receber">—</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="filtros-bar" id="filtros-bar" style="display:none;">
+      <select id="filtro-imovel">
+        <option value="">Todos os imóveis</option>
+      </select>
+      <select id="filtro-mes">
+        <option value="">Todos os meses</option>
+        <option value="1">Janeiro</option>
+        <option value="2">Fevereiro</option>
+        <option value="3">Março</option>
+        <option value="4">Abril</option>
+        <option value="5">Maio</option>
+        <option value="6">Junho</option>
+        <option value="7">Julho</option>
+        <option value="8">Agosto</option>
+        <option value="9">Setembro</option>
+        <option value="10">Outubro</option>
+        <option value="11">Novembro</option>
+        <option value="12">Dezembro</option>
+      </select>
+      <select id="filtro-ano">
+        <option value="">Todos os anos</option>
+      </select>
+      <label class="toggle-pendentes">
+        <input type="checkbox" id="toggle-pendentes-primeiro">
+        Mostrar pendentes primeiro
+      </label>
+    </div>
+
+    <!-- Tabela -->
+    <div class="card card-glass" style="overflow-x: auto;">
+      <div id="loading-state" style="padding: 48px; text-align: center;">
+        <div class="skeleton" style="height:16px;width:60%;margin:0 auto 12px;border-radius:6px;"></div>
+        <div class="skeleton" style="height:16px;width:80%;margin:0 auto 12px;border-radius:6px;"></div>
+        <div class="skeleton" style="height:16px;width:70%;margin:0 auto;border-radius:6px;"></div>
+      </div>
+      <div id="empty-state" style="display:none; padding: 64px; text-align: center; color: var(--text-muted);">
+        <p style="font-size: 1rem; margin-bottom: 8px; font-weight: 500;">Nenhum imóvel arrendado</p>
+        <p style="font-size: 0.875rem;">Marca um imóvel como "Arrendado" em <a href="imoveis.html" style="color: var(--green);">Imóveis</a>.</p>
+      </div>
+      <div id="filtered-empty" style="display:none; padding: 40px; text-align: center; color: var(--text-muted);">
+        <p style="font-size: 0.875rem;">Nenhum resultado para os filtros seleccionados.</p>
+      </div>
+      <table class="table" id="tabela" style="display:none;">
+        <thead>
+          <tr>
+            <th>Imóvel</th>
+            <th>Proprietário</th>
+            <th>Inquilino</th>
+            <th>Início contrato</th>
+            <th style="text-align:right;">Renda bruta</th>
+            <th style="text-align:right;">Imposto (19%)</th>
+            <th style="text-align:right;">Renda líquida</th>
+            <th style="text-align:right;">Yield bruta</th>
+            <th id="th-periodo" style="display:none;">Período</th>
+            <th>Estado</th>
+          </tr>
+        </thead>
+        <tbody id="tabela-corpo"></tbody>
+      </table>
+    </div>
+
+  </main>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<div id="toast-container"></div>
+
+<script src="js/nav.js"></script>
+<script>
+(async () => {
+  try {
+    const SUPABASE_URL = 'https://yykxfvaxraqvumzpixjr.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_LMWVg87iISuEd8BRDogN0g_amyVMfVx';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Auth guard
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { window.location.href = 'index.html'; return; }
+
+    // Helpers
+    function eur(v) {
+      if (v == null || v === '' || isNaN(v)) return '—';
+      return Number(v).toLocaleString('pt-PT', { style: 'currency', currency: 'EUR' });
+    }
+    function pct(v) {
+      if (v == null || isNaN(v)) return '—';
+      return Number(v).toFixed(2).replace('.', ',') + '%';
+    }
+    function dataFmt(d) {
+      if (!d) return '—';
+      const [y, m, dia] = d.split('-');
+      return `${dia}/${m}/${y}`;
+    }
+    function proprietarioLabel(p) {
+      return p === 'unique_clouds' ? 'Unique Clouds' : 'Miguel Carvalho';
+    }
+    function todayISO() {
+      return new Date().toISOString().slice(0, 10);
+    }
+    function toastLocal(msg, tipo = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const t = document.createElement('div');
+      t.className = `toast toast-${tipo}`;
+      t.textContent = msg;
+      container.appendChild(t);
+      setTimeout(() => {
+        t.style.opacity = '0';
+        t.style.transition = 'opacity 0.3s';
+        setTimeout(() => t.remove(), 300);
+      }, 3500);
+    }
+
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth() + 1;
+    const anoAtual = hoje.getFullYear();
+    const diaAtual = hoje.getDate();
+
+    // Buscar imóveis arrendados
+    const { data: imoveis, error } = await sb
+      .from('properties')
+      .select('*')
+      .eq('estado', 'arrendado')
+      .order('nome', { ascending: true });
+
+    if (error) throw error;
+
+    // Obras por imóvel, para o cálculo da yield sobre o investimento total
+    const { data: obrasData } = await sb
+      .from('property_works')
+      .select('*')
+      .in('property_id', (imoveis || []).map(i => i.id));
+
+    const obrasPorImovel = {};
+    (obrasData || []).forEach(o => {
+      obrasPorImovel[o.property_id] = (obrasPorImovel[o.property_id] || 0) + (Number(o.valor) || 0);
+    });
+
+    function investimentoTotal(im) {
+      return (Number(im.valor_aquisicao) || 0) + (Number(im.custos_aquisicao) || 0) + (obrasPorImovel[im.id] || 0);
+    }
+
+    document.getElementById('loading-state').style.display = 'none';
+
+    if (!imoveis || imoveis.length === 0) {
+      document.getElementById('subtitulo').textContent = '0 imóveis arrendados';
+      document.getElementById('empty-state').style.display = 'block';
+      return;
+    }
+
+    // Buscar estado de pagamentos de todos os imóveis arrendados
+    const { data: pagamentosData, error: errPagamentos } = await sb
+      .from('pagamentos')
+      .select('*')
+      .in('imovel_id', imoveis.map(i => i.id));
+
+    if (errPagamentos) throw errPagamentos;
+
+    const pagamentosMap = {};
+    (pagamentosData || []).forEach(p => {
+      pagamentosMap[`${p.imovel_id}_${p.mes}_${p.ano}`] = p;
+    });
+
+    // Buscar contratos (histórico de inquilinos) para saber os períodos exactos de arrendamento
+    const { data: contratosData } = await sb
+      .from('contratos')
+      .select('*')
+      .in('imovel_id', imoveis.map(i => i.id));
+
+    const contratosPorImovel = {};
+    (contratosData || []).forEach(c => {
+      if (!contratosPorImovel[c.imovel_id]) contratosPorImovel[c.imovel_id] = [];
+      contratosPorImovel[c.imovel_id].push(c);
+    });
+
+    const MESES_LABEL = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    function mesAnoLabel(mes, ano) {
+      return `${MESES_LABEL[mes]} ${ano}`;
+    }
+
+    // Lista de {mes, ano} em que o imóvel esteve arrendado (mais recente primeiro),
+    // com base no histórico de contratos; sem contratos, usa a data de início actual.
+    function mesesArrendado(imovel) {
+      const ctrs = contratosPorImovel[imovel.id] || [];
+      const periodos = ctrs.length > 0
+        ? ctrs.map(c => ({ inicio: c.data_inicio, fim: c.data_fim }))
+        : (imovel.data_inicio_contrato ? [{ inicio: imovel.data_inicio_contrato, fim: null }] : []);
+
+      const mesesSet = new Set();
+      periodos.forEach(p => {
+        if (!p.inicio) return;
+        const [anoIni, mesIni] = p.inicio.split('-').map(Number);
+        let anoFim, mesFim;
+        if (p.fim) {
+          [anoFim, mesFim] = p.fim.split('-').map(Number);
+        } else {
+          // Contrato activo: mostra sempre pelo menos 12 meses a partir do início (mesmo que ainda não tenham ocorrido),
+          // ou até ao mês actual se o contrato já durar mais tempo. Tem de ser igual à lógica em imovel-detalhe.html.
+          let anoMin = anoIni, mesMin = mesIni + 11;
+          while (mesMin > 12) { mesMin -= 12; anoMin++; }
+          const passaDoAtual = anoMin > anoAtual || (anoMin === anoAtual && mesMin > mesAtual);
+          anoFim = passaDoAtual ? anoMin : anoAtual;
+          mesFim = passaDoAtual ? mesMin : mesAtual;
+        }
+        let a = anoIni, m = mesIni;
+        while (a < anoFim || (a === anoFim && m <= mesFim)) {
+          mesesSet.add(`${a}-${m}`);
+          m++;
+          if (m > 12) { m = 1; a++; }
+        }
+      });
+
+      return [...mesesSet]
+        .map(s => { const [a, m] = s.split('-').map(Number); return { ano: a, mes: m }; })
+        .sort((x, y) => (y.ano - x.ano) || (y.mes - x.mes));
+    }
+
+    // Mês/ano actualmente relevante para o estado (segue os filtros; "Todos" = mês corrente)
+    function estadoMes() {
+      const v = document.getElementById('filtro-mes').value;
+      return v ? parseInt(v, 10) : mesAtual;
+    }
+    function estadoAno() {
+      const v = selectAno.value;
+      return v ? parseInt(v, 10) : anoAtual;
+    }
+
+    function computeEstado(imovel, mes = estadoMes(), ano = estadoAno()) {
+      const chave = `${imovel.id}_${mes}_${ano}`;
+      const row = pagamentosMap[chave];
+      let estado = row ? row.estado : 'pendente';
+
+      if (estado === 'pendente') {
+        const limite = imovel.dia_limite_pagamento || 8;
+        const mesJaPassou = (ano < anoAtual) || (ano === anoAtual && mes < mesAtual);
+        const mesCorrenteForaDoPrazo = (ano === anoAtual && mes === mesAtual && diaAtual > limite);
+        if (mesJaPassou || mesCorrenteForaDoPrazo) estado = 'atrasado';
+      }
+      return { estado, mes, ano };
+    }
+
+    const LABELS_ESTADO = { pago: 'Pago', pendente: 'Pendente', atrasado: 'Atrasado' };
+    const PESO_ESTADO   = { atrasado: 0, pendente: 1, pago: 2 };
+
+    function pillHtml(imovel, mes = estadoMes(), ano = estadoAno()) {
+      const { estado } = computeEstado(imovel, mes, ano);
+      return `<button type="button" class="status-pill status-${estado}" data-imovel-id="${imovel.id}" data-mes="${mes}" data-ano="${ano}" data-estado="${estado}">
+        <span class="status-dot"></span>${LABELS_ESTADO[estado]}
+      </button>`;
+    }
+
+    function atualizarCardPorReceber() {
+      const soma = imoveis.reduce((s, i) => {
+        const { estado } = computeEstado(i);
+        return estado !== 'pago' ? s + (Number(i.renda_mensal) || 0) : s;
+      }, 0);
+      const card = document.getElementById('stat-por-receber');
+      card.textContent = eur(soma);
+      card.style.color = soma > 0 ? 'var(--red)' : 'var(--text-muted)';
+    }
+
+    async function alternarEstadoPagamento(btn) {
+      const imovelId    = btn.dataset.imovelId;
+      const estadoAtual = btn.dataset.estado;
+      const imovel      = imoveis.find(i => i.id === imovelId);
+      const mes = parseInt(btn.dataset.mes, 10);
+      const ano = parseInt(btn.dataset.ano, 10);
+
+      const indoParaPago  = estadoAtual !== 'pago';
+      const novoEstadoDB  = indoParaPago ? 'pago' : 'pendente';
+      const dataPagamento = indoParaPago ? todayISO() : null;
+      const valorPago     = indoParaPago ? (Number(imovel.renda_mensal) || null) : null;
+
+      btn.disabled = true;
+      btn.classList.add('is-loading');
+
+      try {
+        const { data, error: errUpsert } = await sb
+          .from('pagamentos')
+          .upsert({
+            imovel_id: imovelId,
+            mes, ano,
+            estado: novoEstadoDB,
+            data_pagamento: dataPagamento,
+            valor_pago: valorPago,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'imovel_id,mes,ano' })
+          .select()
+          .single();
+
+        if (errUpsert) throw errUpsert;
+
+        pagamentosMap[`${imovelId}_${mes}_${ano}`] = data;
+        renderTabela();
+        atualizarCardPorReceber();
+      } catch (err) {
+        console.error(err);
+        btn.disabled = false;
+        btn.classList.remove('is-loading');
+        toastLocal('Não foi possível guardar o pagamento. Tenta novamente.', 'error');
+      }
+    }
+
+    // Totais globais (cards — não mudam com filtros)
+    const totalRendaBruta = imoveis.reduce((s, i) => s + (Number(i.renda_mensal) || 0), 0);
+    const totalImposto = imoveis.reduce((s, i) => {
+      const r = Number(i.renda_mensal) || 0;
+      return s + (i.regime_fiscal === 'englobamento' ? 0 : r * 0.19);
+    }, 0);
+    const totalLiquida = totalRendaBruta - totalImposto;
+
+    document.getElementById('subtitulo').textContent =
+      `${imoveis.length} imóvel${imoveis.length !== 1 ? 's' : ''} arrendado${imoveis.length !== 1 ? 's' : ''}`;
+    document.getElementById('stat-total').textContent = imoveis.length;
+    document.getElementById('stat-renda-bruta').textContent = eur(totalRendaBruta);
+    document.getElementById('stat-renda-liquida').textContent = eur(totalLiquida);
+    document.getElementById('stat-imposto').textContent = eur(totalImposto);
+    document.getElementById('stats-grid').style.display = 'grid';
+    document.getElementById('filtros-bar').style.display = 'flex';
+    document.getElementById('tabela').style.display = 'table';
+
+    // Preencher dropdown de imóveis
+    const selectImovel = document.getElementById('filtro-imovel');
+    imoveis.forEach(i => {
+      const opt = document.createElement('option');
+      opt.value = i.id;
+      opt.textContent = i.nome || '(sem nome)';
+      selectImovel.appendChild(opt);
+    });
+
+    // Preencher dropdown de anos (baseado nos meses de renda reais de cada imóvel, incluindo meses futuros já pagos)
+    const anos = [...new Set(
+      imoveis.flatMap(i => mesesArrendado(i).map(({ ano }) => ano))
+    )].sort((a, b) => b - a);
+    const selectAno = document.getElementById('filtro-ano');
+    anos.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a;
+      opt.textContent = a;
+      selectAno.appendChild(opt);
+    });
+
+    // Renderizar tabela — o filtro de mês/ano escolhe o período de pagamento a mostrar
+    // (Estado da coluna e card "Por receber"), não esconde imóveis. Só o filtro de
+    // imóvel específico restringe as linhas. Com "Todos os meses" + "Todos os anos",
+    // cada imóvel mostra uma linha por cada mês em que esteve arrendado.
+    function renderTabela() {
+      const filtroId  = selectImovel.value;
+      const filtroMes = document.getElementById('filtro-mes').value;
+      const filtroAno = selectAno.value;
+      const modoHistorico = !filtroMes;
+
+      const filtrados = imoveis.filter(i => {
+        if (filtroId && i.id !== filtroId) return false;
+        return true;
+      });
+
+      let linhas;
+      if (modoHistorico) {
+        linhas = [];
+        filtrados.forEach(i => {
+          mesesArrendado(i)
+            .filter(({ ano }) => !filtroAno || ano === parseInt(filtroAno, 10))
+            .forEach(({ mes, ano }) => linhas.push({ imovel: i, mes, ano }));
+        });
+      } else {
+        linhas = filtrados.map(i => ({ imovel: i, mes: estadoMes(), ano: estadoAno() }));
+      }
+
+      if (document.getElementById('toggle-pendentes-primeiro').checked) {
+        linhas.sort((a, b) =>
+          PESO_ESTADO[computeEstado(a.imovel, a.mes, a.ano).estado] - PESO_ESTADO[computeEstado(b.imovel, b.mes, b.ano).estado]
+        );
+      }
+
+      document.getElementById('th-periodo').style.display = modoHistorico ? '' : 'none';
+
+      const tbody = document.getElementById('tabela-corpo');
+      const filteredEmpty = document.getElementById('filtered-empty');
+
+      if (linhas.length === 0) {
+        tbody.innerHTML = '';
+        filteredEmpty.style.display = 'block';
+        document.getElementById('tabela').style.display = 'none';
+        return;
+      }
+
+      filteredEmpty.style.display = 'none';
+      document.getElementById('tabela').style.display = 'table';
+
+      tbody.innerHTML = linhas.map(({ imovel: i, mes, ano }) => {
+        const renda   = Number(i.renda_mensal) || 0;
+        const imposto = i.regime_fiscal === 'englobamento' ? 0 : renda * 0.19;
+        const liquida = renda - imposto;
+        const invTotal = investimentoTotal(i);
+        const yieldBruta = invTotal ? (renda * 12 / invTotal) * 100 : null;
+        const impostoCell = i.regime_fiscal === 'englobamento'
+          ? `<span style="color:var(--text-muted);font-size:0.8rem;">Englobamento</span>`
+          : eur(imposto);
+
+        return `<tr>
+          <td>
+            <a href="imovel-detalhe.html?id=${i.id}" style="color:var(--text-primary);font-weight:500;text-decoration:none;">
+              ${i.nome || '—'}
+            </a>
+          </td>
+          <td>${proprietarioLabel(i.proprietario)}</td>
+          <td>${i.inquilino_nome || '<span style="color:var(--text-muted)">—</span>'}</td>
+          <td>${dataFmt(i.data_inicio_contrato)}</td>
+          <td style="text-align:right;color:var(--green);">${eur(renda)}</td>
+          <td style="text-align:right;color:var(--red);">${impostoCell}</td>
+          <td style="text-align:right;color:var(--green);">${eur(liquida)}</td>
+          <td style="text-align:right;">${pct(yieldBruta)}</td>
+          ${modoHistorico ? `<td>${mesAnoLabel(mes, ano)}</td>` : ''}
+          <td>${pillHtml(i, mes, ano)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    renderTabela();
+    atualizarCardPorReceber();
+
+    function aplicarFiltros() {
+      renderTabela();
+      atualizarCardPorReceber();
+    }
+
+    document.getElementById('filtro-imovel').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtro-mes').addEventListener('change', aplicarFiltros);
+    document.getElementById('filtro-ano').addEventListener('change', aplicarFiltros);
+    document.getElementById('toggle-pendentes-primeiro').addEventListener('change', renderTabela);
+
+    document.getElementById('tabela-corpo').addEventListener('click', (e) => {
+      const btn = e.target.closest('.status-pill');
+      if (btn && !btn.disabled) alternarEstadoPagamento(btn);
+    });
+
+  } catch (err) {
+    console.error(err);
+    const loadingEl = document.getElementById('loading-state');
+    loadingEl.style.display = 'block';
+    loadingEl.innerHTML =
+      `<p style="color:var(--red);padding:24px;">Erro ao carregar: ${err.message}</p>`;
+  }
+})();
+</script>
+</body>
+</html>

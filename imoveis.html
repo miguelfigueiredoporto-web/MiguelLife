@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Miguel Life — Imóveis</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/theme-glass.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+
+<div class="bg-photo"></div>
+<div class="glow-blob glow-1"></div>
+<div class="glow-blob glow-2"></div>
+<div class="glow-blob glow-3"></div>
+<div class="glow-blob glow-4"></div>
+
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <main class="main-content page-fade">
+
+    <div class="page-header">
+      <h1>Imóveis</h1>
+      <button class="btn btn-primary btn-sm" id="btn-novo">
+        <i data-lucide="plus" width="16" height="16"></i>
+        Novo Imóvel
+      </button>
+    </div>
+
+    <!-- Resumo (só aparece quando há imóveis) -->
+    <div id="stats-section" style="display:none;">
+      <div class="stats-grid" style="margin-bottom:24px;">
+        <div class="stat-card card-glass">
+          <div class="stat-label">Renda Total Bruta</div>
+          <div class="stat-value text-green" id="stat-renda">—</div>
+          <div class="stat-sub" id="stat-renda-sub">—</div>
+        </div>
+        <div class="stat-card card-glass">
+          <div class="stat-label">Custos Fixos Mensais</div>
+          <div class="stat-value text-red" id="stat-custos">—</div>
+          <div class="stat-sub">condomínios + seguros + IMI</div>
+        </div>
+        <div class="stat-card card-glass">
+          <div class="stat-label">Yield Média Bruta</div>
+          <div class="stat-value" id="stat-yield">—</div>
+          <div class="stat-sub">sobre invest. total</div>
+        </div>
+        <div class="stat-card card-glass">
+          <div class="stat-label">Valor de Mercado Total</div>
+          <div class="stat-value" id="stat-mercado">—</div>
+          <div class="stat-sub" id="stat-mercado-sub">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div id="lista-imoveis">
+      <div class="loading-overlay"><div class="spinner"></div> A carregar…</div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal novo/editar imóvel -->
+<div class="modal-overlay" id="modal-imovel" style="display:none;">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <h2 id="modal-titulo">Novo Imóvel</h2>
+      <button class="btn btn-ghost btn-icon" id="btn-fechar-modal">
+        <i data-lucide="x" width="18" height="18"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Identificação -->
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Identificação</h4>
+        <div class="form-grid" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Nome / Descrição *</label>
+            <input class="form-input" type="text" id="f-nome" placeholder="ex: T2 Porto — Rua de Santa Catarina">
+          </div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Tipo</label>
+              <select class="form-select" id="f-tipo">
+                <option value="residencial">Residencial</option>
+                <option value="comercial">Comercial</option>
+                <option value="terreno">Terreno</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-select" id="f-estado">
+                <option value="arrendado">Arrendado</option>
+                <option value="vazio">Vazio</option>
+                <option value="uso_proprio">Uso próprio</option>
+                <option value="vendido">Vendido</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Proprietário</label>
+            <select class="form-select" id="f-proprietario">
+              <option value="miguel">Miguel Carvalho (pessoal)</option>
+              <option value="unique_clouds">Unique Clouds (empresa)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Aquisição -->
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Aquisição</h4>
+        <div class="form-grid form-grid-2" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Data de aquisição</label>
+            <input class="form-input" type="date" id="f-data-aquisicao">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor de aquisição (€)</label>
+            <input class="form-input" type="number" id="f-valor-aquisicao" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Capital próprio / entrada (€)</label>
+            <input class="form-input" type="number" id="f-capital-proprio" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">IMT + Imposto de Selo + notário (€)</label>
+            <input class="form-input" type="number" id="f-custos-aquisicao" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Custo de obra (€)</label>
+            <input class="form-input" type="number" id="f-obra-inicial" placeholder="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Financiamento -->
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Financiamento (se aplicável)</h4>
+        <div class="form-grid form-grid-2" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Banco</label>
+            <input class="form-input" type="text" id="f-banco" placeholder="ex: CGD, BPI, Millennium">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Montante do empréstimo (€)</label>
+            <input class="form-input" type="number" id="f-financiamento-montante" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prestação mensal (€)</label>
+            <input class="form-input" type="number" id="f-prestacao" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Taxa de juro (%)</label>
+            <input class="form-input" type="number" id="f-taxa" placeholder="0.00" step="0.01">
+          </div>
+        </div>
+      </div>
+
+      <!-- Custos recorrentes -->
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Custos Recorrentes</h4>
+        <div class="form-grid form-grid-2" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Condomínio mensal (€)</label>
+            <input class="form-input" type="number" id="f-condominio" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">IMI anual (€)</label>
+            <input class="form-input" type="number" id="f-imi" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Seguros anuais (€)</label>
+            <input class="form-input" type="number" id="f-seguros" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Outros custos anuais (€)</label>
+            <input class="form-input" type="number" id="f-outros-custos" placeholder="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Arrendamento (condicional) -->
+      <div id="secao-arrendamento">
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Arrendamento</h4>
+        <div class="form-grid form-grid-2" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Renda mensal (€)</label>
+            <input class="form-input" type="number" id="f-renda" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Início do contrato</label>
+            <input class="form-input" type="date" id="f-inicio-contrato">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nome do inquilino (opcional)</label>
+            <input class="form-input" type="text" id="f-inquilino" placeholder="Nome">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Regime fiscal</label>
+            <select class="form-select" id="f-regime">
+              <option value="taxa_autonoma">Taxa autónoma (19%)</option>
+              <option value="englobamento">Englobamento</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Valor de mercado e notas -->
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Avaliação e Notas</h4>
+        <div class="form-grid" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Valor de mercado actual estimado (€)</label>
+            <input class="form-input" type="number" id="f-mercado" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-textarea" id="f-notas" placeholder="Notas adicionais…"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar">
+        <span id="btn-guardar-text">Guardar Imóvel</span>
+        <span id="btn-guardar-spinner" class="spinner" style="display:none;width:14px;height:14px;"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<div id="toast-container"></div>
+
+<script src="js/nav.js"></script>
+<script>
+(async () => {
+ try {
+  const SUPABASE_URL = 'https://yykxfvaxraqvumzpixjr.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_LMWVg87iISuEd8BRDogN0g_amyVMfVx';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // Auth guard
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; }
+
+  const userId = session.user.id;
+
+  // ---- Formatadores ----
+  const eur = v => v != null ? new Intl.NumberFormat('pt-PT', { style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(v) : '—';
+  const eurM = v => { if (!v) return '—'; return Math.abs(v)>=1000 ? (v/1000).toFixed(1).replace('.',',')+' k€' : eur(v); };
+  const pct  = v => v != null ? v.toFixed(1).replace('.',',')+' %' : '—';
+  const investimentoTotal = im => {
+    const obras = (im.property_works||[]).reduce((s,o) => s + (Number(o.valor)||0), 0);
+    return (Number(im.valor_aquisicao)||0) + (Number(im.custos_aquisicao)||0) + obras;
+  };
+
+  function toast(msg, tipo='success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast toast-${tipo}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(),300); }, 3500);
+  }
+
+  // ---- Carregar imóveis ----
+  async function carregarImoveis() {
+    const { data, error } = await sb.from('properties').select('*, property_works(*)').eq('user_id', userId).order('created_at', { ascending: false });
+    if (error) { toast('Erro a carregar imóveis', 'error'); return; }
+    renderLista(data || []);
+    if (data && data.length > 0) renderStats(data);
+  }
+
+  function renderStats(imoveis) {
+    const ativos = imoveis.filter(i => i.estado !== 'vendido');
+    const arrendados = ativos.filter(i => i.estado === 'arrendado');
+    const rendaTotal = arrendados.reduce((s,i) => s + (i.renda_mensal||0), 0);
+    const custosTotal = ativos.reduce((s,i) => s + (i.condominio_mensal||0) + (i.imi_anual||0)/12 + (i.seguros_anuais||0)/12, 0);
+    const mercadoTotal = ativos.reduce((s,i) => s + (i.valor_mercado_atual||0), 0);
+    const aquisicaoTotal = ativos.reduce((s,i) => s + (i.valor_aquisicao||0), 0);
+
+    const yields = arrendados.filter(i=>investimentoTotal(i)).map(i => (i.renda_mensal*12/investimentoTotal(i))*100);
+    const yieldMedia = yields.length ? yields.reduce((a,b)=>a+b,0)/yields.length : null;
+
+    document.getElementById('stat-renda').textContent = eurM(rendaTotal) + '/mês';
+    document.getElementById('stat-renda-sub').textContent = arrendados.length + ' imóvel(is) arrendado(s)';
+    document.getElementById('stat-custos').textContent = eurM(custosTotal) + '/mês';
+    document.getElementById('stat-yield').textContent = pct(yieldMedia);
+    document.getElementById('stat-mercado').textContent = eurM(mercadoTotal);
+    const maisValia = mercadoTotal - aquisicaoTotal;
+    document.getElementById('stat-mercado-sub').textContent = maisValia >= 0 ? 'mais-valia latente: +' + eurM(maisValia) : 'menos-valia: ' + eurM(maisValia);
+
+    document.getElementById('stats-section').style.display = 'block';
+  }
+
+  function renderLista(imoveis) {
+    const container = document.getElementById('lista-imoveis');
+    if (imoveis.length === 0) {
+      container.innerHTML = `
+        <div class="empty-state">
+          <i data-lucide="building-2" width="40" height="40"></i>
+          <h3>Sem imóveis registados</h3>
+          <p>Clica em "Novo Imóvel" para adicionar o primeiro.</p>
+        </div>`;
+      lucide.createIcons();
+      return;
+    }
+
+    const TAG_ESTADO   = { arrendado: 'tag-green', vazio: 'tag-yellow', uso_proprio: 'tag-blue', vendido: 'tag-red' };
+    const LABEL_ESTADO = { arrendado: 'Arrendado', vazio: 'Vazio', uso_proprio: 'Uso próprio', vendido: 'Vendido' };
+
+    const PESO_ESTADO = { arrendado: 0, vazio: 1, uso_proprio: 1, vendido: 2 };
+    const ordenados = [...imoveis].sort((a, b) => (PESO_ESTADO[a.estado] ?? 1) - (PESO_ESTADO[b.estado] ?? 1));
+
+    container.innerHTML = `
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;">
+        ${ordenados.map(im => {
+          const vendido = im.estado === 'vendido';
+          const estadoTag = TAG_ESTADO[im.estado] || 'tag-blue';
+          const estadoLabel = LABEL_ESTADO[im.estado] || im.estado;
+          const invTotalIm = investimentoTotal(im);
+          const yield_b = im.renda_mensal && invTotalIm ? pct((im.renda_mensal*12/invTotalIm)*100) : null;
+
+          return `
+            <a href="imovel-detalhe.html?id=${im.id}" class="card card-glass" style="display:flex;flex-direction:column;aspect-ratio:16/9;text-decoration:none;padding:8px;border-radius:12px;${vendido ? 'opacity:0.6;' : ''}">
+              <span class="tag ${estadoTag}" style="align-self:flex-start;font-size:0.44rem;padding:1px 5px;">${estadoLabel}</span>
+              <h3 style="color:var(--text-primary);margin-top:4px;font-size:0.64rem;font-weight:600;" class="truncate">${im.nome}</h3>
+              <div style="font-size:0.5rem;color:var(--text-muted);text-transform:capitalize;" class="truncate">${im.tipo||'Residencial'}</div>
+              <div style="flex:1;"></div>
+              ${vendido
+                ? `<div style="font-size:0.68rem;font-weight:700;color:var(--text-primary);">${eur(im.valor_venda)}</div>`
+                : im.renda_mensal ? `<div style="font-size:0.68rem;font-weight:700;color:var(--green);">${eur(im.renda_mensal)}<span style="font-size:0.48rem;font-weight:400;color:var(--text-muted);">/mês</span></div>` : `<div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);">—</div>`}
+              ${!vendido && yield_b ? `<div style="font-size:0.48rem;color:var(--text-muted);">yield ${yield_b}</div>` : ''}
+            </a>`;
+        }).join('')}
+      </div>`;
+    lucide.createIcons();
+  }
+
+  // ---- Modal ----
+  let editandoId = null;
+
+  async function abrirModal(imovel = null) {
+    editandoId = imovel ? imovel.id : null;
+    document.getElementById('modal-titulo').textContent = imovel ? 'Editar Imóvel' : 'Novo Imóvel';
+    document.getElementById('btn-guardar-text').textContent = imovel ? 'Guardar Alterações' : 'Guardar Imóvel';
+
+    // Limpar / preencher campos
+    const campos = ['nome','tipo','estado','data-aquisicao','valor-aquisicao','capital-proprio',
+      'custos-aquisicao','banco','financiamento-montante','prestacao','taxa',
+      'condominio','imi','seguros','outros-custos','renda','inicio-contrato',
+      'inquilino','regime','mercado','notas'];
+    const mapa = {
+      'nome': 'nome', 'tipo': 'tipo', 'estado': 'estado',
+      'data-aquisicao': 'data_aquisicao', 'valor-aquisicao': 'valor_aquisicao',
+      'capital-proprio': 'capital_proprio', 'custos-aquisicao': 'custos_aquisicao',
+      'proprietario': 'proprietario',
+      'banco': 'financiamento_banco', 'financiamento-montante': 'financiamento_montante',
+      'prestacao': 'financiamento_prestacao', 'taxa': 'financiamento_taxa',
+      'condominio': 'condominio_mensal', 'imi': 'imi_anual', 'seguros': 'seguros_anuais',
+      'outros-custos': 'outros_custos_anuais', 'renda': 'renda_mensal',
+      'inicio-contrato': 'data_inicio_contrato', 'inquilino': 'inquilino_nome',
+      'regime': 'regime_fiscal', 'mercado': 'valor_mercado_atual', 'notas': 'notas',
+    };
+    for (const [fId, dbKey] of Object.entries(mapa)) {
+      const el = document.getElementById('f-' + fId);
+      if (el) el.value = imovel ? (imovel[dbKey] ?? '') : '';
+    }
+
+    // Carregar obra inicial se estiver a editar
+    const campoObra = document.getElementById('f-obra-inicial');
+    campoObra.value = '';
+    if (imovel) {
+      const { data: obras } = await sb.from('property_works').select('valor').eq('property_id', imovel.id).eq('descricao', 'Obra inicial').single();
+      if (obras) campoObra.value = obras.valor || '';
+    }
+
+    toggleArrendamento();
+    document.getElementById('modal-imovel').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModal() {
+    document.getElementById('modal-imovel').style.display = 'none';
+    document.body.style.overflow = '';
+    editandoId = null;
+  }
+
+  function toggleArrendamento() {
+    const estado = document.getElementById('f-estado').value;
+    document.getElementById('secao-arrendamento').style.display = estado === 'arrendado' ? 'block' : 'none';
+  }
+
+  document.getElementById('f-estado').addEventListener('change', toggleArrendamento);
+  document.getElementById('btn-novo').addEventListener('click', () => abrirModal());
+  document.getElementById('btn-fechar-modal').addEventListener('click', fecharModal);
+  document.getElementById('btn-cancelar').addEventListener('click', fecharModal);
+
+  // ---- Guardar ----
+  document.getElementById('btn-guardar').addEventListener('click', async () => {
+    const nome = document.getElementById('f-nome').value.trim();
+    if (!nome) { toast('O nome é obrigatório.', 'error'); return; }
+
+    document.getElementById('btn-guardar-text').style.display = 'none';
+    document.getElementById('btn-guardar-spinner').style.display = 'inline-block';
+
+    const dados = {
+      user_id:                userId,
+      nome,
+      tipo:                   document.getElementById('f-tipo').value,
+      estado:                 document.getElementById('f-estado').value,
+      proprietario:           document.getElementById('f-proprietario').value,
+      data_aquisicao:         document.getElementById('f-data-aquisicao').value || null,
+      valor_aquisicao:        parseFloat(document.getElementById('f-valor-aquisicao').value) || null,
+      capital_proprio:        parseFloat(document.getElementById('f-capital-proprio').value) || null,
+      custos_aquisicao:       parseFloat(document.getElementById('f-custos-aquisicao').value) || null,
+      financiamento_banco:    document.getElementById('f-banco').value || null,
+      financiamento_montante: parseFloat(document.getElementById('f-financiamento-montante').value) || null,
+      financiamento_prestacao:parseFloat(document.getElementById('f-prestacao').value) || null,
+      financiamento_taxa:     parseFloat(document.getElementById('f-taxa').value) || null,
+      condominio_mensal:      parseFloat(document.getElementById('f-condominio').value) || null,
+      imi_anual:              parseFloat(document.getElementById('f-imi').value) || null,
+      seguros_anuais:         parseFloat(document.getElementById('f-seguros').value) || null,
+      outros_custos_anuais:   parseFloat(document.getElementById('f-outros-custos').value) || null,
+      renda_mensal:           parseFloat(document.getElementById('f-renda').value) || null,
+      data_inicio_contrato:   document.getElementById('f-inicio-contrato').value || null,
+      inquilino_nome:         document.getElementById('f-inquilino').value || null,
+      regime_fiscal:          document.getElementById('f-regime').value,
+      valor_mercado_atual:    parseFloat(document.getElementById('f-mercado').value) || null,
+      notas:                  document.getElementById('f-notas').value || null,
+    };
+
+    const obraInicial = parseFloat(document.getElementById('f-obra-inicial').value) || null;
+
+    let error, data;
+    if (editandoId) {
+      ({ error } = await sb.from('properties').update(dados).eq('id', editandoId));
+      // Actualizar obra inicial se preenchida
+      if (!error && obraInicial) {
+        const { data: obras } = await sb.from('property_works').select('id').eq('property_id', editandoId).eq('descricao', 'Obra inicial');
+        if (obras && obras.length > 0) {
+          await sb.from('property_works').update({ valor: obraInicial }).eq('id', obras[0].id);
+        } else {
+          await sb.from('property_works').insert({ property_id: editandoId, descricao: 'Obra inicial', valor: obraInicial, data: dados.data_aquisicao });
+        }
+      }
+    } else {
+      ({ error, data } = await sb.from('properties').insert(dados).select().single());
+      // Criar obra inicial se preenchida
+      if (!error && obraInicial && data) {
+        await sb.from('property_works').insert({ property_id: data.id, descricao: 'Obra inicial', valor: obraInicial, data: dados.data_aquisicao });
+      }
+    }
+
+    document.getElementById('btn-guardar-text').style.display = 'inline';
+    document.getElementById('btn-guardar-spinner').style.display = 'none';
+
+    if (error) { toast('Erro ao guardar: ' + error.message, 'error'); return; }
+
+    toast(editandoId ? 'Imóvel actualizado.' : 'Imóvel adicionado.');
+    fecharModal();
+    carregarImoveis();
+  });
+
+  // Fechar ao clicar fora
+  document.getElementById('modal-imovel').addEventListener('click', e => {
+    if (e.target === e.currentTarget) fecharModal();
+  });
+
+  // Init
+  await carregarImoveis();
+  if (window.lucide) lucide.createIcons();
+
+ } catch (err) {
+  document.getElementById('lista-imoveis').innerHTML = `
+    <div class="empty-state">
+      <h3>Erro ao carregar</h3>
+      <p style="font-size:0.82rem;color:var(--red);">${err.message}</p>
+      <a href="index.html" class="btn btn-primary" style="margin-top:16px;">Ir para o login</a>
+    </div>`;
+ }
+})();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Miguel Life — Imóvel</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/theme-glass.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    /* Blocos e letras compactos, só nesta página */
+    .stats-grid { gap: 8px; }
+    .stat-card { padding: 12px; }
+    .stat-card .stat-label { font-size: 0.62rem; margin-bottom: 3px; }
+    .stat-card .stat-value { font-size: 1.15rem; }
+    .stat-card .stat-sub { font-size: 0.64rem; margin-top: 2px; }
+    .content-grid { gap: 10px; }
+    .card { padding: 12px; }
+    .card-header { margin-bottom: 8px; }
+    .card-title { font-size: 0.72rem; }
+    .list-item { padding: 6px 0 !important; }
+    .list-item span { font-size: 0.78rem !important; }
+
+    /* Cartões tipo acordeão — clicar no título mostra/esconde os detalhes */
+    .acordeao > summary {
+      cursor: pointer;
+      list-style: none;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .acordeao > summary::-webkit-details-marker { display: none; }
+    .acordeao > summary::after {
+      content: '▾';
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      transition: transform 0.2s;
+      margin-left: 8px;
+    }
+    .acordeao[open] > summary::after { transform: rotate(180deg); }
+    .acordeao > .acordeao-corpo { margin-top: 6px; }
+
+    /* Meses do contrato — pills de estado de pagamento (igual a arrendamentos.html) */
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      font-family: inherit;
+    }
+    .status-pill:disabled { cursor: default; }
+    .status-pill.is-loading { opacity: 0.45; }
+    .status-pago      { background: var(--green-dim);  color: var(--green); }
+    .status-pendente  { background: var(--red-dim);    color: var(--red); }
+    .status-atrasado  { background: var(--yellow-dim); color: var(--yellow); }
+    .status-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-photo"></div>
+<div class="glow-blob glow-1"></div>
+<div class="glow-blob glow-2"></div>
+<div class="glow-blob glow-3"></div>
+<div class="glow-blob glow-4"></div>
+
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <main class="main-content page-fade">
+
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+      <a href="imoveis.html" class="btn btn-secondary btn-sm">
+        <i data-lucide="arrow-left" width="14" height="14"></i>
+        Imóveis
+      </a>
+      <div style="flex:1;"></div>
+      <button class="btn btn-secondary btn-sm" id="btn-novo-inquilino">
+        <i data-lucide="user-plus" width="14" height="14"></i>
+        Novo Inquilino
+      </button>
+      <button class="btn btn-secondary btn-sm" id="btn-vender">
+        <i data-lucide="hand-coins" width="14" height="14"></i>
+        Vender
+      </button>
+      <button class="btn btn-secondary btn-sm" id="btn-nova-despesa">
+        <i data-lucide="receipt" width="14" height="14"></i>
+        Nova Despesa
+      </button>
+      <button class="btn btn-secondary btn-sm" id="btn-editar">
+        <i data-lucide="edit-2" width="14" height="14"></i>
+        Editar
+      </button>
+      <button class="btn btn-danger btn-sm" id="btn-apagar">
+        <i data-lucide="trash-2" width="14" height="14"></i>
+      </button>
+    </div>
+
+    <div id="conteudo">
+      <div class="loading-overlay"><div class="spinner"></div> A carregar…</div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Modal editar imóvel -->
+<div class="modal-overlay" id="modal-imovel" style="display:none;">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <h2>Editar Imóvel</h2>
+      <button class="btn btn-ghost btn-icon" id="btn-fechar-modal">
+        <i data-lucide="x" width="18" height="18"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:20px;">
+
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Identificação</h4>
+        <div class="form-grid" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Nome / Descrição *</label>
+            <input class="form-input" type="text" id="f-nome" placeholder="ex: T2 Porto — Rua de Santa Catarina">
+          </div>
+          <div class="form-grid form-grid-2">
+            <div class="form-group">
+              <label class="form-label">Tipo</label>
+              <select class="form-select" id="f-tipo">
+                <option value="residencial">Residencial</option>
+                <option value="comercial">Comercial</option>
+                <option value="terreno">Terreno</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Estado</label>
+              <select class="form-select" id="f-estado">
+                <option value="arrendado">Arrendado</option>
+                <option value="vazio">Vazio</option>
+                <option value="uso_proprio">Uso próprio</option>
+                <option value="vendido">Vendido</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Proprietário</label>
+            <select class="form-select" id="f-proprietario">
+              <option value="miguel">Miguel Carvalho (pessoal)</option>
+              <option value="unique_clouds">Unique Clouds (empresa)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Aquisição</h4>
+        <div class="form-grid form-grid-2" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Data de aquisição</label>
+            <input class="form-input" type="date" id="f-data-aquisicao">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Valor de aquisição (€)</label>
+            <input class="form-input" type="number" id="f-valor-aquisicao" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Capital próprio / entrada (€)</label>
+            <input class="form-input" type="number" id="f-capital-proprio" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">IMT + Imposto de Selo + notário (€)</label>
+            <input class="form-input" type="number" id="f-custos-aquisicao" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Custo de obra (€)</label>
+            <input class="form-input" type="number" id="f-obra-inicial" placeholder="0">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Financiamento</h4>
+        <div class="form-grid form-grid-2" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Banco</label>
+            <input class="form-input" type="text" id="f-banco" placeholder="ex: CGD, BPI">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Montante (€)</label>
+            <input class="form-input" type="number" id="f-financiamento-montante" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Prestação mensal (€)</label>
+            <input class="form-input" type="number" id="f-prestacao" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Taxa de juro (%)</label>
+            <input class="form-input" type="number" id="f-taxa" placeholder="0.00" step="0.01">
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Custos Recorrentes</h4>
+        <div class="form-grid form-grid-2" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Condomínio mensal (€)</label>
+            <input class="form-input" type="number" id="f-condominio" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">IMI anual (€)</label>
+            <input class="form-input" type="number" id="f-imi" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Seguros anuais (€)</label>
+            <input class="form-input" type="number" id="f-seguros" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Outros custos anuais (€)</label>
+            <input class="form-input" type="number" id="f-outros-custos" placeholder="0">
+          </div>
+        </div>
+      </div>
+
+      <div id="secao-arrendamento">
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Arrendamento</h4>
+        <div class="form-grid form-grid-2" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Renda mensal (€)</label>
+            <input class="form-input" type="number" id="f-renda" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Início do contrato</label>
+            <input class="form-input" type="date" id="f-inicio-contrato">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nome do inquilino (opcional)</label>
+            <input class="form-input" type="text" id="f-inquilino" placeholder="Nome">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Regime fiscal</label>
+            <select class="form-select" id="f-regime">
+              <option value="taxa_autonoma">Taxa autónoma (19%)</option>
+              <option value="englobamento">Englobamento</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="margin-bottom:12px;color:var(--text-muted);font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;">Avaliação e Notas</h4>
+        <div class="form-grid" style="gap:12px;">
+          <div class="form-group">
+            <label class="form-label">Valor de mercado actual estimado (€)</label>
+            <input class="form-input" type="number" id="f-mercado" placeholder="0">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Notas</label>
+            <textarea class="form-textarea" id="f-notas" placeholder="Notas adicionais…"></textarea>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btn-cancelar">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar">
+        <span id="btn-guardar-text">Guardar Alterações</span>
+        <span id="btn-guardar-spinner" class="spinner" style="display:none;width:14px;height:14px;"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal novo inquilino -->
+<div class="modal-overlay" id="modal-novo-inquilino" style="display:none;">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h2>Novo Inquilino</h2>
+      <button class="btn btn-ghost btn-icon" id="btn-fechar-modal-ni">
+        <i data-lucide="x" width="18" height="18"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+      <p style="font-size:0.8rem;color:var(--text-muted);">
+        Fecha automaticamente o contrato actual (se existir) e regista um novo, mantendo o histórico.
+      </p>
+      <div class="form-group">
+        <label class="form-label">Nome do inquilino *</label>
+        <input class="form-input" type="text" id="ni-nome" placeholder="Nome">
+      </div>
+      <div class="form-grid form-grid-2" style="gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Renda mensal (€)</label>
+          <input class="form-input" type="number" id="ni-renda" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Início do contrato *</label>
+          <input class="form-input" type="date" id="ni-data-inicio">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Caução (€)</label>
+          <input class="form-input" type="number" id="ni-caucao" placeholder="0">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btn-cancelar-ni">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-ni">
+        <span id="btn-guardar-ni-text">Guardar</span>
+        <span id="btn-guardar-ni-spinner" class="spinner" style="display:none;width:14px;height:14px;"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal vender imóvel -->
+<div class="modal-overlay" id="modal-vender" style="display:none;">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h2>Vender Imóvel</h2>
+      <button class="btn btn-ghost btn-icon" id="btn-fechar-modal-vender">
+        <i data-lucide="x" width="18" height="18"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+      <p style="font-size:0.8rem;color:var(--text-muted);">
+        Marca o imóvel como vendido. Fecha o contrato de arrendamento activo (se existir) e deixa de contar para os totais de património e despesas.
+      </p>
+      <div class="form-grid form-grid-2" style="gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Data de venda *</label>
+          <input class="form-input" type="date" id="v-data">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Valor de venda (€) *</label>
+          <input class="form-input" type="number" id="v-valor" placeholder="0">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btn-cancelar-vender">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-vender">
+        <span id="btn-guardar-vender-text">Confirmar Venda</span>
+        <span id="btn-guardar-vender-spinner" class="spinner" style="display:none;width:14px;height:14px;"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal cessar arrendamento -->
+<div class="modal-overlay" id="modal-cessar" style="display:none;">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-header">
+      <h2>Cessar Arrendamento</h2>
+      <button class="btn btn-ghost btn-icon" id="btn-fechar-modal-cessar">
+        <i data-lucide="x" width="18" height="18"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+      <p style="font-size:0.8rem;color:var(--text-muted);">
+        Fecha o contrato do inquilino actual na data indicada. O imóvel passa a "Vazio".
+      </p>
+      <div class="form-group">
+        <label class="form-label">Data de cessação *</label>
+        <input class="form-input" type="date" id="cs-data">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btn-cancelar-cessar">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-cessar">
+        <span id="btn-guardar-cessar-text">Confirmar Cessação</span>
+        <span id="btn-guardar-cessar-spinner" class="spinner" style="display:none;width:14px;height:14px;"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar caução -->
+<div class="modal-overlay" id="modal-caucao" style="display:none;">
+  <div class="modal" style="max-width:360px;">
+    <div class="modal-header">
+      <h2>Editar Caução</h2>
+      <button class="btn btn-ghost btn-icon" id="btn-fechar-modal-caucao">
+        <i data-lucide="x" width="18" height="18"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+      <div class="form-group">
+        <label class="form-label">Valor da caução (€)</label>
+        <input class="form-input" type="number" id="cau-valor" placeholder="0">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btn-cancelar-caucao">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-caucao">
+        <span id="btn-guardar-caucao-text">Guardar</span>
+        <span id="btn-guardar-caucao-spinner" class="spinner" style="display:none;width:14px;height:14px;"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nova/editar despesa do imóvel -->
+<div class="modal-overlay" id="modal-despesa" style="display:none;">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-header">
+      <h2 id="modal-despesa-titulo">Nova Despesa</h2>
+      <button class="btn btn-ghost btn-icon" id="btn-fechar-modal-despesa">
+        <i data-lucide="x" width="18" height="18"></i>
+      </button>
+    </div>
+    <div class="modal-body" style="display:flex;flex-direction:column;gap:16px;">
+      <div class="form-group">
+        <label class="form-label">Nome *</label>
+        <input class="form-input" type="text" id="d-nome" placeholder="ex: Reparação canalização, Seguro, Condomínio">
+      </div>
+      <div class="form-grid form-grid-2" style="gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Valor (€) *</label>
+          <input class="form-input" type="number" id="d-valor" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Data *</label>
+          <input class="form-input" type="date" id="d-data">
+        </div>
+      </div>
+      <div class="form-grid form-grid-2" style="gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Tipo</label>
+          <select class="form-select" id="d-tipo">
+            <option value="fixo">Fixo</option>
+            <option value="variavel" selected>Variável</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Periodicidade</label>
+          <select class="form-select" id="d-periodicidade">
+            <option value="mensal">Mensal</option>
+            <option value="trimestral">Trimestral</option>
+            <option value="anual">Anual</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="checkbox" id="d-ativo" checked style="width:auto;">
+          Despesa activa
+        </label>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Factura (PDF, opcional)</label>
+        <div id="d-fatura-actual" style="display:none;margin-bottom:8px;font-size:0.8rem;">
+          <a href="#" id="d-link-fatura-actual">📎 Ver factura actual</a>
+          · <button type="button" id="btn-remover-fatura-despesa" class="btn btn-ghost btn-sm" style="padding:2px 6px;font-size:0.72rem;">remover</button>
+        </div>
+        <input class="form-input" type="file" id="d-fatura" accept="application/pdf">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Notas</label>
+        <textarea class="form-textarea" id="d-notas" placeholder="Notas adicionais…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" id="btn-cancelar-despesa">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-despesa">
+        <span id="btn-guardar-despesa-text">Guardar Despesa</span>
+        <span id="btn-guardar-despesa-spinner" class="spinner" style="display:none;width:14px;height:14px;"></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<div id="toast-container"></div>
+
+<script src="js/nav.js"></script>
+<script>
+(async () => {
+  const SUPABASE_URL = 'https://yykxfvaxraqvumzpixjr.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_LMWVg87iISuEd8BRDogN0g_amyVMfVx';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'index.html'; }
+
+  const id = new URLSearchParams(window.location.search).get('id');
+  if (!id) { window.location.href = 'imoveis.html'; }
+
+  const eur  = v => v != null ? new Intl.NumberFormat('pt-PT', { style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(v) : '—';
+  const pct  = v => v != null ? v.toFixed(1).replace('.',',')+' %' : '—';
+  const data = d => d ? new Date(d).toLocaleDateString('pt-PT') : '—';
+  const todayISO = () => new Date().toISOString().slice(0, 10);
+
+  function toast(msg, tipo='success') {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast toast-${tipo}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(()=>t.remove(),300); }, 3500);
+  }
+
+  let imovel = null;
+  let contratos = [];
+  let despesasImovel = [];
+  let pagamentosMap = {};
+
+  const LABEL_CATEGORIA_D = {
+    agencias: 'Agências', imoveis: 'Imóveis', condominio: 'Condomínio', financas: 'Finanças Pessoais',
+    marca: 'Marca Pessoal', pessoal: 'Pessoal / Família', outros: 'Outros',
+  };
+
+  // ---- Meses do contrato / estado de pagamento (partilhado com arrendamentos.html via a tabela 'pagamentos') ----
+  const MESES_LABEL = ['', 'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  const LABELS_ESTADO = { pago: 'Pago', pendente: 'Pendente', atrasado: 'Atrasado' };
+  const hoje = new Date();
+  const mesAtual = hoje.getMonth() + 1;
+  const anoAtual = hoje.getFullYear();
+  const diaAtual = hoje.getDate();
+
+  function mesAnoLabel(mes, ano) { return `${MESES_LABEL[mes]} ${ano}`; }
+
+  function mesesArrendado() {
+    const periodos = contratos.length > 0
+      ? contratos.map(c => ({ inicio: c.data_inicio, fim: c.data_fim }))
+      : (imovel?.data_inicio_contrato ? [{ inicio: imovel.data_inicio_contrato, fim: null }] : []);
+
+    const mesesSet = new Set();
+    periodos.forEach(p => {
+      if (!p.inicio) return;
+      const [anoIni, mesIni] = p.inicio.split('-').map(Number);
+      let anoFim, mesFim;
+      if (p.fim) {
+        [anoFim, mesFim] = p.fim.split('-').map(Number);
+      } else {
+        // Contrato activo: mostra sempre pelo menos 12 meses a partir do início (mesmo que ainda não tenham ocorrido),
+        // ou até ao mês actual se o contrato já durar mais tempo.
+        let anoMin = anoIni, mesMin = mesIni + 11;
+        while (mesMin > 12) { mesMin -= 12; anoMin++; }
+        const passaDoAtual = anoMin > anoAtual || (anoMin === anoAtual && mesMin > mesAtual);
+        anoFim = passaDoAtual ? anoMin : anoAtual;
+        mesFim = passaDoAtual ? mesMin : mesAtual;
+      }
+      let a = anoIni, m = mesIni;
+      while (a < anoFim || (a === anoFim && m <= mesFim)) {
+        mesesSet.add(`${a}-${m}`);
+        m++;
+        if (m > 12) { m = 1; a++; }
+      }
+    });
+
+    return [...mesesSet]
+      .map(s => { const [a, m] = s.split('-').map(Number); return { ano: a, mes: m }; })
+      .sort((x, y) => (y.ano - x.ano) || (y.mes - x.mes));
+  }
+
+  function computeEstadoPagamento(mes, ano) {
+    const rowPag = pagamentosMap[`${mes}_${ano}`];
+    let estado = rowPag ? rowPag.estado : 'pendente';
+    if (estado === 'pendente') {
+      const limite = imovel?.dia_limite_pagamento || 8;
+      const mesJaPassou = (ano < anoAtual) || (ano === anoAtual && mes < mesAtual);
+      const mesCorrenteForaDoPrazo = (ano === anoAtual && mes === mesAtual && diaAtual > limite);
+      if (mesJaPassou || mesCorrenteForaDoPrazo) estado = 'atrasado';
+    }
+    return estado;
+  }
+
+  function pillMesHtml(mes, ano) {
+    const estado = computeEstadoPagamento(mes, ano);
+    return `<button type="button" class="status-pill status-${estado}" data-mes="${mes}" data-ano="${ano}" data-estado="${estado}">
+      <span class="status-dot"></span>${mesAnoLabel(mes, ano)} · ${LABELS_ESTADO[estado]}
+    </button>`;
+  }
+
+  async function alternarEstadoPagamentoDetalhe(btn) {
+    const mes = parseInt(btn.dataset.mes, 10);
+    const ano = parseInt(btn.dataset.ano, 10);
+    const estadoAtual = btn.dataset.estado;
+    const indoParaPago = estadoAtual !== 'pago';
+    const novoEstadoDB = indoParaPago ? 'pago' : 'pendente';
+    const dataPagamento = indoParaPago ? todayISO() : null;
+    const valorPago = indoParaPago ? (Number(imovel.renda_mensal) || null) : null;
+
+    btn.disabled = true;
+    btn.classList.add('is-loading');
+
+    try {
+      const { data: pagAtualizado, error } = await sb.from('pagamentos').upsert({
+        imovel_id: id, mes, ano, estado: novoEstadoDB,
+        data_pagamento: dataPagamento, valor_pago: valorPago,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'imovel_id,mes,ano' }).select().single();
+
+      if (error) throw error;
+
+      pagamentosMap[`${mes}_${ano}`] = pagAtualizado;
+      renderDetalhe(imovel);
+      if (window.lucide) lucide.createIcons();
+    } catch (err) {
+      toast('Não foi possível guardar o pagamento. Tenta novamente.', 'error');
+      btn.disabled = false;
+      btn.classList.remove('is-loading');
+    }
+  }
+
+  // ---- Facturas (Supabase Storage) ----
+  async function uploadFatura(ficheiro) {
+    const caminho = `${session.user.id}/${crypto.randomUUID()}.pdf`;
+    const { error } = await sb.storage.from('faturas').upload(caminho, ficheiro, { contentType: 'application/pdf' });
+    if (error) throw error;
+    return caminho;
+  }
+
+  async function apagarFatura(caminho) {
+    if (!caminho) return;
+    await sb.storage.from('faturas').remove([caminho]);
+  }
+
+  async function abrirFatura(caminho) {
+    const { data: assinado, error } = await sb.storage.from('faturas').createSignedUrl(caminho, 3600);
+    if (error || !assinado) { toast('Não foi possível abrir a factura.', 'error'); return; }
+    window.open(assinado.signedUrl, '_blank');
+  }
+
+  async function carregar() {
+    const { data: im, error } = await sb
+      .from('properties')
+      .select('*, property_works(*)')
+      .eq('id', id)
+      .single();
+
+    if (error || !im) { window.location.href = 'imoveis.html'; return; }
+    imovel = im;
+
+    const { data: ctrs } = await sb
+      .from('contratos')
+      .select('*')
+      .eq('imovel_id', id)
+      .order('data_inicio', { ascending: false });
+    contratos = ctrs || [];
+
+    const { data: desp } = await sb
+      .from('despesas')
+      .select('*')
+      .eq('imovel_id', id)
+      .order('data', { ascending: false });
+    despesasImovel = desp || [];
+
+    const { data: pags } = await sb
+      .from('pagamentos')
+      .select('*')
+      .eq('imovel_id', id);
+    pagamentosMap = {};
+    (pags || []).forEach(p => { pagamentosMap[`${p.mes}_${p.ano}`] = p; });
+
+    renderDetalhe(im);
+  }
+
+  function renderDetalhe(im) {
+    const obras = im.property_works || [];
+    const totalObras = obras.reduce((s,o) => s + (o.valor||0), 0);
+    const impostoAnual = im.renda_mensal && im.regime_fiscal === 'taxa_autonoma' ? (im.renda_mensal*12*0.19) : 0;
+    const rendaLiquidaAnual = im.renda_mensal ? im.renda_mensal*12 - impostoAnual : null;
+    const contratoAtivo = contratos.find(c => !c.data_fim);
+    const despesasCondominio = despesasImovel.filter(d => d.categoria === 'condominio');
+    const despesasOutras = despesasImovel.filter(d => d.categoria !== 'condominio');
+    const totalCondominio = despesasCondominio.reduce((s, d) => s + (Number(d.valor_mensal) || 0), 0);
+    const totalDespesasImovel = despesasImovel.reduce((s, d) => s + (Number(d.valor_mensal) || 0), 0);
+    const totalCustosImovel = (Number(im.valor_aquisicao)||0) + (Number(im.custos_aquisicao)||0)
+      + (Number(im.financiamento_montante)||0) + (Number(im.financiamento_prestacao)||0)
+      + totalObras + totalDespesasImovel;
+    const investimentoTotal = (Number(im.valor_aquisicao)||0) + (Number(im.custos_aquisicao)||0) + totalObras;
+    const yieldBruta = im.renda_mensal && investimentoTotal ? (im.renda_mensal*12/investimentoTotal)*100 : null;
+    const maisValiaRealizada = im.valor_venda != null && im.valor_aquisicao ? im.valor_venda - im.valor_aquisicao - (im.custos_aquisicao||0) - totalObras : null;
+
+    const TAG_ESTADO   = { arrendado: 'tag-green', vazio: 'tag-yellow', uso_proprio: 'tag-blue', vendido: 'tag-red' };
+    const LABEL_ESTADO = { arrendado: 'Arrendado', vazio: 'Vazio', uso_proprio: 'Uso próprio', vendido: 'Vendido' };
+    const estadoTag   = TAG_ESTADO[im.estado] || 'tag-blue';
+    const estadoLabel = LABEL_ESTADO[im.estado] || im.estado;
+    const vendido = im.estado === 'vendido';
+
+    document.getElementById('btn-novo-inquilino').style.display = vendido ? 'none' : 'inline-flex';
+    document.getElementById('btn-vender').style.display = vendido ? 'none' : 'inline-flex';
+
+    document.title = `Miguel Life — ${im.nome}`;
+
+    document.getElementById('conteudo').innerHTML = `
+      <div style="margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <span class="tag ${estadoTag}">${estadoLabel}</span>
+          <span style="font-size:0.78rem;color:var(--text-muted);text-transform:capitalize;">${im.tipo||'Residencial'}</span>
+          <span style="font-size:0.78rem;color:var(--text-muted);">· ${im.proprietario === 'unique_clouds' ? 'Unique Clouds' : 'Miguel Carvalho'}</span>
+        </div>
+        <h1>${im.nome}</h1>
+        ${im.data_aquisicao ? `<p style="margin-top:4px;font-size:0.82rem;">Adquirido em ${new Date(im.data_aquisicao).toLocaleDateString('pt-PT',{month:'long',year:'numeric'})}${im.valor_aquisicao?' por '+eur(im.valor_aquisicao):''}</p>` : ''}
+      </div>
+
+      <div class="stats-grid" style="margin-bottom:24px;">
+        <div class="stat-card card-glass">
+          <div class="stat-label">Renda Mensal</div>
+          <div class="stat-value ${im.renda_mensal ? 'text-green' : 'text-muted'}">${im.renda_mensal ? eur(im.renda_mensal) : '—'}</div>
+          <div class="stat-sub">${im.renda_mensal ? eur(im.renda_mensal*12)+'/ano bruto' : 'sem arrendamento'}</div>
+        </div>
+        <div class="stat-card card-glass">
+          <div class="stat-label">Condomínio Mensal</div>
+          <div class="stat-value ${im.condominio_mensal ? 'text-red' : 'text-muted'}">${im.condominio_mensal ? eur(im.condominio_mensal) : '—'}</div>
+          <div class="stat-sub">${im.condominio_mensal ? eur(im.condominio_mensal*12)+'/ano' : 'sem condomínio'}</div>
+        </div>
+        <div class="stat-card card-glass">
+          <div class="stat-label">Yield Bruta</div>
+          <div class="stat-value">${pct(yieldBruta)}</div>
+          <div class="stat-sub">sobre invest. total (aquisição+custos+obras)</div>
+        </div>
+      </div>
+
+      <div class="content-grid" style="gap:20px;">
+
+        ${im.estado === 'arrendado' ? `
+        <details class="card card-glass acordeao">
+          <summary class="card-header"><span class="card-title">Arrendamento</span></summary>
+          <div class="acordeao-corpo">
+            ${row('Renda mensal', `<span style="color:var(--green);">${eur(im.renda_mensal)}</span>`)}
+            ${im.data_inicio_contrato ? row('Início do contrato', data(im.data_inicio_contrato)) : ''}
+            ${im.inquilino_nome ? row('Inquilino', im.inquilino_nome) : ''}
+            ${row('Regime fiscal', `<span class="tag tag-blue">${im.regime_fiscal === 'taxa_autonoma' ? 'Taxa autónoma 19%' : 'Englobamento'}</span>`)}
+            <div class="list-item" style="padding:10px 0;">
+              <span style="color:var(--text-muted);font-size:0.82rem;flex:1;">Caução</span>
+              <span class="font-mono" style="font-size:0.875rem;margin-right:6px;">${contratoAtivo?.caucao != null ? eur(contratoAtivo.caucao) : '—'}</span>
+              <button class="btn btn-ghost btn-icon" id="btn-editar-caucao" title="Editar caução"><i data-lucide="edit-2" width="14" height="14"></i></button>
+            </div>
+            <div class="list-item" style="padding:10px 0;border-bottom:none;">
+              <span style="font-size:0.82rem;font-weight:700;flex:1;">Renda líquida anual</span>
+              <span class="font-mono" style="font-weight:700;color:var(--green);">${eur(rendaLiquidaAnual)}</span>
+            </div>
+            <div style="margin-top:12px;">
+              <div style="font-size:0.68rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px;">Meses do contrato — clica para marcar pago/pendente</div>
+              <div style="display:flex;flex-wrap:wrap;gap:6px;">
+                ${mesesArrendado().map(({ mes, ano }) => pillMesHtml(mes, ano)).join('')}
+              </div>
+            </div>
+          </div>
+        </details>` : ''}
+
+        ${vendido ? `
+        <div class="card card-glass">
+          <div class="card-header"><span class="card-title">Venda</span></div>
+          ${row('Data de venda', data(im.data_venda))}
+          ${row('Valor de venda', `<span style="color:var(--green);">${eur(im.valor_venda)}</span>`)}
+          <div class="list-item" style="padding:10px 0;border-bottom:none;">
+            <span style="font-size:0.82rem;font-weight:700;flex:1;">Mais-valia realizada</span>
+            <span class="font-mono" style="font-weight:700;color:${maisValiaRealizada > 0 ? 'var(--green)' : maisValiaRealizada < 0 ? 'var(--red)' : 'var(--text-primary)'};">${maisValiaRealizada != null ? (maisValiaRealizada>=0?'+':'')+eur(maisValiaRealizada) : '—'}</span>
+          </div>
+        </div>` : ''}
+
+        ${contratos.length > 0 ? `
+        <div class="card card-glass">
+          <div class="card-header"><span class="card-title">Histórico de Inquilinos</span></div>
+          ${contratos.map(c => `
+            <div class="list-item" style="padding:10px 0;">
+              <div style="flex:1;">
+                <div style="font-size:0.875rem;font-weight:500;">
+                  ${c.inquilino_nome}
+                  ${!c.data_fim ? '<span class="tag tag-green" style="margin-left:6px;">Actual</span>' : ''}
+                </div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">
+                  ${data(c.data_inicio)} — ${c.data_fim ? data(c.data_fim) : 'presente'}
+                </div>
+              </div>
+              <span class="font-mono" style="font-size:0.875rem;margin-right:6px;">${eur(c.renda_mensal)}</span>
+              ${!c.data_fim ? `<button class="btn btn-secondary btn-sm" data-cessar-contrato="${c.id}" title="Cessar arrendamento">Cessar</button>` : ''}
+            </div>`).join('')}
+        </div>` : ''}
+
+        ${obras.length > 0 ? `
+        <details class="card card-glass acordeao">
+          <summary class="card-header"><span class="card-title">Obras Realizadas</span></summary>
+          <div class="acordeao-corpo">
+            ${obras.map(o => `
+              <div class="list-item" style="padding:10px 0;">
+                <div style="flex:1;">
+                  <div style="font-size:0.875rem;font-weight:500;">${o.descricao}</div>
+                  ${o.data ? `<div style="font-size:0.72rem;color:var(--text-muted);">${data(o.data)}</div>` : ''}
+                </div>
+                <span class="font-mono" style="font-size:0.875rem;">${eur(o.valor)}</span>
+              </div>`).join('')}
+            <div class="divider"></div>
+            <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
+              <span style="font-weight:700;">Total obras</span>
+              <span class="font-mono" style="font-weight:700;">${eur(totalObras)}</span>
+            </div>
+          </div>
+        </details>` : ''}
+
+        <div class="card card-glass">
+          <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;">
+            <span class="card-title">Condomínio</span>
+            <button class="btn btn-ghost btn-icon" id="btn-novo-condominio" title="Nova despesa de condomínio">
+              <i data-lucide="plus" width="14" height="14"></i>
+            </button>
+          </div>
+          ${despesasCondominio.length === 0 ? `<p style="font-size:0.82rem;color:var(--text-muted);padding:8px 0;">Sem despesas de condomínio registadas.</p>` : despesasCondominio.map(d => `
+            <div class="list-item" style="padding:10px 0;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:0.875rem;font-weight:500;">${d.nome}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">${data(d.data)}${!d.ativo ? ' · inactiva' : ''}</div>
+              </div>
+              <span class="font-mono" style="font-size:0.875rem;color:var(--red);margin-right:6px;">${eur(d.valor_mensal)}</span>
+              ${d.fatura_path ? `<button class="btn btn-ghost btn-icon" data-ver-fatura="${d.fatura_path}" title="Ver factura"><i data-lucide="paperclip" width="14" height="14"></i></button>` : ''}
+              <button class="btn btn-ghost btn-icon" data-editar-despesa="${d.id}"><i data-lucide="edit-2" width="14" height="14"></i></button>
+              <button class="btn btn-ghost btn-icon" data-apagar-despesa="${d.id}"><i data-lucide="trash-2" width="14" height="14"></i></button>
+            </div>`).join('')}
+          ${despesasCondominio.length > 0 ? `
+          <div class="divider"></div>
+          <div style="display:flex;justify-content:space-between;font-size:0.82rem;">
+            <span style="font-weight:700;">Total condomínio</span>
+            <span class="font-mono" style="font-weight:700;color:var(--red);">${eur(totalCondominio)}</span>
+          </div>` : ''}
+        </div>
+
+        <div class="card card-glass">
+          <div class="card-header"><span class="card-title">Custos do Imóvel</span></div>
+          ${row('Valor de aquisição', eur(im.valor_aquisicao))}
+          ${im.financiamento_banco ? row('Banco', im.financiamento_banco) : ''}
+          ${im.financiamento_montante ? row('Montante do empréstimo', eur(im.financiamento_montante)) : ''}
+          ${im.financiamento_prestacao ? row('Prestação mensal', `<span style="color:var(--red);">${eur(im.financiamento_prestacao)}</span>`) : ''}
+          ${im.financiamento_taxa ? row('Taxa de juro', pct(im.financiamento_taxa)) : ''}
+          ${im.custos_aquisicao ? row('IMT + IS + notário', eur(im.custos_aquisicao)) : ''}
+          ${totalObras > 0 ? row('Obras realizadas', eur(totalObras)) : ''}
+          ${totalCondominio > 0 ? row('Condomínio (total)', `<span style="color:var(--red);">${eur(totalCondominio)}</span>`) : ''}
+          ${despesasOutras.length === 0 ? `<p style="font-size:0.82rem;color:var(--text-muted);padding:8px 0;">${totalCondominio > 0 ? 'Sem outras despesas registadas para este imóvel.' : 'Sem despesas registadas para este imóvel.'}</p>` : despesasOutras.map(d => `
+            <div class="list-item" style="padding:10px 0;">
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:0.875rem;font-weight:500;">${d.nome}</div>
+                <div style="font-size:0.72rem;color:var(--text-muted);">${data(d.data)} · ${LABEL_CATEGORIA_D[d.categoria] || d.categoria}${!d.ativo ? ' · inactiva' : ''}</div>
+              </div>
+              <span class="font-mono" style="font-size:0.875rem;color:var(--red);margin-right:6px;">${eur(d.valor_mensal)}</span>
+              ${d.fatura_path ? `<button class="btn btn-ghost btn-icon" data-ver-fatura="${d.fatura_path}" title="Ver factura"><i data-lucide="paperclip" width="14" height="14"></i></button>` : ''}
+              <button class="btn btn-ghost btn-icon" data-editar-despesa="${d.id}"><i data-lucide="edit-2" width="14" height="14"></i></button>
+              <button class="btn btn-ghost btn-icon" data-apagar-despesa="${d.id}"><i data-lucide="trash-2" width="14" height="14"></i></button>
+            </div>`).join('')}
+          ${totalCustosImovel > 0 ? `
+          <div class="divider"></div>
+          <div class="list-item" style="padding:10px 0;border-bottom:none;">
+            <span style="font-size:0.82rem;font-weight:700;flex:1;">Total custos</span>
+            <span class="font-mono" style="font-weight:700;color:var(--red);">${eur(totalCustosImovel)}</span>
+          </div>` : ''}
+        </div>
+
+        ${im.notas ? `
+        <div class="card card-glass">
+          <div class="card-header"><span class="card-title">Notas</span></div>
+          <p style="font-size:0.875rem;color:var(--text-secondary);">${im.notas}</p>
+        </div>` : ''}
+
+      </div>
+    `;
+
+    if (window.lucide) lucide.createIcons();
+
+    document.querySelectorAll('[data-ver-fatura]').forEach(btn => {
+      btn.addEventListener('click', () => abrirFatura(btn.dataset.verFatura));
+    });
+    document.querySelectorAll('[data-editar-despesa]').forEach(btn => {
+      btn.addEventListener('click', () => abrirModalDespesa(despesasImovel.find(d => d.id === btn.dataset.editarDespesa)));
+    });
+    document.querySelectorAll('[data-apagar-despesa]').forEach(btn => {
+      btn.addEventListener('click', () => apagarDespesaImovel(btn.dataset.apagarDespesa));
+    });
+    document.getElementById('btn-novo-condominio')?.addEventListener('click', () => abrirModalDespesa(null, 'condominio'));
+    document.getElementById('btn-editar-caucao')?.addEventListener('click', abrirModalCaucao);
+    document.querySelectorAll('[data-cessar-contrato]').forEach(btn => {
+      btn.addEventListener('click', () => abrirModalCessar(btn.dataset.cessarContrato));
+    });
+    document.querySelectorAll('.status-pill[data-mes]').forEach(btn => {
+      btn.addEventListener('click', () => alternarEstadoPagamentoDetalhe(btn));
+    });
+  }
+
+  function row(label, valor) {
+    return `<div class="list-item" style="padding:10px 0;">
+      <span style="color:var(--text-muted);font-size:0.82rem;flex:1;">${label}</span>
+      <span class="font-mono" style="font-size:0.875rem;">${valor}</span>
+    </div>`;
+  }
+
+  // ---- Modal edição ----
+  function toggleArrendamento() {
+    const estado = document.getElementById('f-estado').value;
+    document.getElementById('secao-arrendamento').style.display = estado === 'arrendado' ? 'block' : 'none';
+  }
+
+  function abrirModal() {
+    if (!imovel) return;
+    const mapa = {
+      'f-nome': 'nome', 'f-tipo': 'tipo', 'f-estado': 'estado',
+      'f-data-aquisicao': 'data_aquisicao', 'f-valor-aquisicao': 'valor_aquisicao',
+      'f-capital-proprio': 'capital_proprio', 'f-custos-aquisicao': 'custos_aquisicao',
+      'f-proprietario': 'proprietario',
+      'f-banco': 'financiamento_banco', 'f-financiamento-montante': 'financiamento_montante',
+      'f-prestacao': 'financiamento_prestacao', 'f-taxa': 'financiamento_taxa',
+      'f-condominio': 'condominio_mensal', 'f-imi': 'imi_anual', 'f-seguros': 'seguros_anuais',
+      'f-outros-custos': 'outros_custos_anuais', 'f-renda': 'renda_mensal',
+      'f-inicio-contrato': 'data_inicio_contrato', 'f-inquilino': 'inquilino_nome',
+      'f-regime': 'regime_fiscal', 'f-mercado': 'valor_mercado_atual', 'f-notas': 'notas',
+    };
+    for (const [fId, dbKey] of Object.entries(mapa)) {
+      const el = document.getElementById(fId);
+      if (el) el.value = imovel[dbKey] ?? '';
+    }
+    // Obra inicial
+    const obraInicial = (imovel.property_works||[]).find(o => o.descricao === 'Obra inicial');
+    document.getElementById('f-obra-inicial').value = obraInicial ? obraInicial.valor : '';
+
+    toggleArrendamento();
+    document.getElementById('modal-imovel').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModal() {
+    document.getElementById('modal-imovel').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('f-estado').addEventListener('change', toggleArrendamento);
+  document.getElementById('btn-editar').addEventListener('click', abrirModal);
+  document.getElementById('btn-fechar-modal').addEventListener('click', fecharModal);
+  document.getElementById('btn-cancelar').addEventListener('click', fecharModal);
+  document.getElementById('modal-imovel').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModal(); });
+
+  // ---- Modal novo inquilino ----
+  function abrirModalNovoInquilino() {
+    document.getElementById('ni-nome').value = '';
+    document.getElementById('ni-renda').value = imovel?.renda_mensal ?? '';
+    document.getElementById('ni-data-inicio').value = '';
+    document.getElementById('ni-caucao').value = '';
+    document.getElementById('modal-novo-inquilino').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModalNovoInquilino() {
+    document.getElementById('modal-novo-inquilino').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  // ---- Modal cessar arrendamento ----
+  let cessarContratoId = null;
+
+  function abrirModalCessar(contratoId) {
+    cessarContratoId = contratoId;
+    document.getElementById('cs-data').value = todayISO();
+    document.getElementById('modal-cessar').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModalCessar() {
+    document.getElementById('modal-cessar').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('btn-fechar-modal-cessar').addEventListener('click', fecharModalCessar);
+  document.getElementById('btn-cancelar-cessar').addEventListener('click', fecharModalCessar);
+  document.getElementById('modal-cessar').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModalCessar(); });
+
+  document.getElementById('btn-guardar-cessar').addEventListener('click', async () => {
+    const activo = contratos.find(c => c.id === cessarContratoId);
+    if (!activo) return;
+    const dataCessacao = document.getElementById('cs-data').value;
+    if (!dataCessacao) { toast('Indica a data de cessação.', 'error'); return; }
+    if (dataCessacao < activo.data_inicio) { toast('A data de cessação não pode ser anterior ao início do contrato.', 'error'); return; }
+
+    document.getElementById('btn-guardar-cessar-text').style.display = 'none';
+    document.getElementById('btn-guardar-cessar-spinner').style.display = 'inline-block';
+
+    const { error: errCtr } = await sb.from('contratos').update({ data_fim: dataCessacao }).eq('id', activo.id);
+
+    const outroActivo = contratos.find(c => c.id !== activo.id && !c.data_fim);
+    const propsUpdate = outroActivo
+      ? { estado: 'arrendado', inquilino_nome: outroActivo.inquilino_nome, renda_mensal: outroActivo.renda_mensal, data_inicio_contrato: outroActivo.data_inicio }
+      : { estado: 'vazio' };
+    const { error: errProp } = errCtr ? { error: null } : await sb.from('properties').update(propsUpdate).eq('id', id);
+
+    document.getElementById('btn-guardar-cessar-text').style.display = 'inline';
+    document.getElementById('btn-guardar-cessar-spinner').style.display = 'none';
+
+    const error = errCtr || errProp;
+    if (error) { toast('Erro ao guardar: ' + error.message, 'error'); return; }
+
+    toast('Arrendamento cessado.');
+    fecharModalCessar();
+    await carregar();
+    if (window.lucide) lucide.createIcons();
+  });
+
+  // ---- Modal editar caução ----
+  function abrirModalCaucao() {
+    const activo = contratos.find(c => !c.data_fim);
+    if (!activo) { toast('Não há contrato activo.', 'error'); return; }
+    document.getElementById('cau-valor').value = activo.caucao ?? '';
+    document.getElementById('modal-caucao').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModalCaucao() {
+    document.getElementById('modal-caucao').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('btn-fechar-modal-caucao').addEventListener('click', fecharModalCaucao);
+  document.getElementById('btn-cancelar-caucao').addEventListener('click', fecharModalCaucao);
+  document.getElementById('modal-caucao').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModalCaucao(); });
+
+  document.getElementById('btn-guardar-caucao').addEventListener('click', async () => {
+    const activo = contratos.find(c => !c.data_fim);
+    if (!activo) return;
+    const valorTexto = document.getElementById('cau-valor').value;
+    const valor = valorTexto === '' ? null : parseFloat(valorTexto);
+
+    document.getElementById('btn-guardar-caucao-text').style.display = 'none';
+    document.getElementById('btn-guardar-caucao-spinner').style.display = 'inline-block';
+
+    const { error } = await sb.from('contratos').update({ caucao: valor }).eq('id', activo.id);
+
+    document.getElementById('btn-guardar-caucao-text').style.display = 'inline';
+    document.getElementById('btn-guardar-caucao-spinner').style.display = 'none';
+
+    if (error) { toast('Erro ao guardar: ' + error.message, 'error'); return; }
+
+    toast('Caução actualizada.');
+    fecharModalCaucao();
+    await carregar();
+  });
+
+  document.getElementById('btn-novo-inquilino').addEventListener('click', abrirModalNovoInquilino);
+  document.getElementById('btn-fechar-modal-ni').addEventListener('click', fecharModalNovoInquilino);
+  document.getElementById('btn-cancelar-ni').addEventListener('click', fecharModalNovoInquilino);
+  document.getElementById('modal-novo-inquilino').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModalNovoInquilino(); });
+
+  document.getElementById('btn-guardar-ni').addEventListener('click', async () => {
+    const nome = document.getElementById('ni-nome').value.trim();
+    const renda = parseFloat(document.getElementById('ni-renda').value) || null;
+    const dataInicio = document.getElementById('ni-data-inicio').value;
+    const caucao = parseFloat(document.getElementById('ni-caucao').value) || null;
+
+    if (!nome || !dataInicio) { toast('Preenche o nome do inquilino e a data de início.', 'error'); return; }
+
+    document.getElementById('btn-guardar-ni-text').style.display = 'none';
+    document.getElementById('btn-guardar-ni-spinner').style.display = 'inline-block';
+
+    // Fechar contrato activo anterior, se existir
+    const activo = contratos.find(c => !c.data_fim);
+    if (activo) {
+      const diaAntes = new Date(dataInicio + 'T00:00:00');
+      diaAntes.setDate(diaAntes.getDate() - 1);
+      await sb.from('contratos').update({ data_fim: diaAntes.toISOString().slice(0, 10) }).eq('id', activo.id);
+    }
+
+    const { error: errIns } = await sb.from('contratos').insert({
+      imovel_id: id,
+      inquilino_nome: nome,
+      renda_mensal: renda,
+      data_inicio: dataInicio,
+      data_fim: null,
+      caucao,
+    });
+
+    if (!errIns) {
+      await sb.from('properties').update({
+        estado: 'arrendado',
+        inquilino_nome: nome,
+        renda_mensal: renda,
+        data_inicio_contrato: dataInicio,
+      }).eq('id', id);
+    }
+
+    document.getElementById('btn-guardar-ni-text').style.display = 'inline';
+    document.getElementById('btn-guardar-ni-spinner').style.display = 'none';
+
+    if (errIns) { toast('Erro ao guardar: ' + errIns.message, 'error'); return; }
+
+    toast('Novo inquilino registado.');
+    fecharModalNovoInquilino();
+    await carregar();
+    if (window.lucide) lucide.createIcons();
+  });
+
+  // ---- Modal vender imóvel ----
+  function abrirModalVender() {
+    document.getElementById('v-data').value = todayISO();
+    document.getElementById('v-valor').value = imovel?.valor_mercado_atual ?? '';
+    document.getElementById('modal-vender').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModalVender() {
+    document.getElementById('modal-vender').style.display = 'none';
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('btn-vender').addEventListener('click', abrirModalVender);
+  document.getElementById('btn-fechar-modal-vender').addEventListener('click', fecharModalVender);
+  document.getElementById('btn-cancelar-vender').addEventListener('click', fecharModalVender);
+  document.getElementById('modal-vender').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModalVender(); });
+
+  document.getElementById('btn-guardar-vender').addEventListener('click', async () => {
+    const dataVenda = document.getElementById('v-data').value;
+    const valorVenda = parseFloat(document.getElementById('v-valor').value);
+
+    if (!dataVenda) { toast('Indica a data de venda.', 'error'); return; }
+    if (!valorVenda || valorVenda <= 0) { toast('Indica o valor de venda.', 'error'); return; }
+
+    document.getElementById('btn-guardar-vender-text').style.display = 'none';
+    document.getElementById('btn-guardar-vender-spinner').style.display = 'inline-block';
+
+    // Fechar contrato activo, se existir
+    const activo = contratos.find(c => !c.data_fim);
+    if (activo) {
+      await sb.from('contratos').update({ data_fim: dataVenda }).eq('id', activo.id);
+    }
+
+    const { error } = await sb.from('properties').update({
+      estado: 'vendido',
+      data_venda: dataVenda,
+      valor_venda: valorVenda,
+    }).eq('id', id);
+
+    document.getElementById('btn-guardar-vender-text').style.display = 'inline';
+    document.getElementById('btn-guardar-vender-spinner').style.display = 'none';
+
+    if (error) { toast('Erro ao guardar: ' + error.message, 'error'); return; }
+
+    toast('Imóvel marcado como vendido.');
+    fecharModalVender();
+    await carregar();
+    if (window.lucide) lucide.createIcons();
+  });
+
+  document.getElementById('btn-guardar').addEventListener('click', async () => {
+    const nome = document.getElementById('f-nome').value.trim();
+    if (!nome) { toast('O nome é obrigatório.', 'error'); return; }
+
+    document.getElementById('btn-guardar-text').style.display = 'none';
+    document.getElementById('btn-guardar-spinner').style.display = 'inline-block';
+
+    const dados = {
+      nome,
+      tipo:                   document.getElementById('f-tipo').value,
+      estado:                 document.getElementById('f-estado').value,
+      proprietario:           document.getElementById('f-proprietario').value,
+      data_aquisicao:         document.getElementById('f-data-aquisicao').value || null,
+      valor_aquisicao:        parseFloat(document.getElementById('f-valor-aquisicao').value) || null,
+      capital_proprio:        parseFloat(document.getElementById('f-capital-proprio').value) || null,
+      custos_aquisicao:       parseFloat(document.getElementById('f-custos-aquisicao').value) || null,
+      financiamento_banco:    document.getElementById('f-banco').value || null,
+      financiamento_montante: parseFloat(document.getElementById('f-financiamento-montante').value) || null,
+      financiamento_prestacao:parseFloat(document.getElementById('f-prestacao').value) || null,
+      financiamento_taxa:     parseFloat(document.getElementById('f-taxa').value) || null,
+      condominio_mensal:      parseFloat(document.getElementById('f-condominio').value) || null,
+      imi_anual:              parseFloat(document.getElementById('f-imi').value) || null,
+      seguros_anuais:         parseFloat(document.getElementById('f-seguros').value) || null,
+      outros_custos_anuais:   parseFloat(document.getElementById('f-outros-custos').value) || null,
+      renda_mensal:           parseFloat(document.getElementById('f-renda').value) || null,
+      data_inicio_contrato:   document.getElementById('f-inicio-contrato').value || null,
+      inquilino_nome:         document.getElementById('f-inquilino').value || null,
+      regime_fiscal:          document.getElementById('f-regime').value,
+      valor_mercado_atual:    parseFloat(document.getElementById('f-mercado').value) || null,
+      notas:                  document.getElementById('f-notas').value || null,
+    };
+
+    const { error } = await sb.from('properties').update(dados).eq('id', id);
+
+    // Manter o contrato activo em sincronia (correcções ao inquilino actual — não cria histórico novo)
+    if (!error) {
+      const activo = contratos.find(c => !c.data_fim);
+      if (dados.estado === 'arrendado') {
+        if (activo) {
+          await sb.from('contratos').update({
+            inquilino_nome: dados.inquilino_nome || activo.inquilino_nome,
+            renda_mensal:   dados.renda_mensal,
+            data_inicio:    dados.data_inicio_contrato || activo.data_inicio,
+          }).eq('id', activo.id);
+        } else if (dados.data_inicio_contrato) {
+          await sb.from('contratos').insert({
+            imovel_id:      id,
+            inquilino_nome: dados.inquilino_nome || 'Inquilino',
+            renda_mensal:   dados.renda_mensal,
+            data_inicio:    dados.data_inicio_contrato,
+            data_fim:       null,
+          });
+        }
+      } else if (activo) {
+        await sb.from('contratos').update({ data_fim: todayISO() }).eq('id', activo.id);
+      }
+    }
+
+    // Obra inicial
+    const obraVal = parseFloat(document.getElementById('f-obra-inicial').value) || null;
+    if (!error) {
+      const obraExist = (imovel.property_works||[]).find(o => o.descricao === 'Obra inicial');
+      if (obraVal) {
+        if (obraExist) {
+          await sb.from('property_works').update({ valor: obraVal }).eq('id', obraExist.id);
+        } else {
+          await sb.from('property_works').insert({ property_id: id, descricao: 'Obra inicial', valor: obraVal, data: dados.data_aquisicao });
+        }
+      } else if (obraExist) {
+        await sb.from('property_works').delete().eq('id', obraExist.id);
+      }
+    }
+
+    document.getElementById('btn-guardar-text').style.display = 'inline';
+    document.getElementById('btn-guardar-spinner').style.display = 'none';
+
+    if (error) { toast('Erro ao guardar: ' + error.message, 'error'); return; }
+
+    toast('Imóvel actualizado.');
+    fecharModal();
+    await carregar();
+  });
+
+  // ---- Modal despesa do imóvel ----
+  let editandoDespesaId = null;
+  let faturaActualPath = null;
+  let removerFaturaFlag = false;
+  let categoriaDespesaAtual = 'imoveis';
+
+  function abrirModalDespesa(despesa = null, categoriaNova = 'imoveis') {
+    editandoDespesaId = despesa ? despesa.id : null;
+    categoriaDespesaAtual = despesa ? despesa.categoria : categoriaNova;
+    const titulo = despesa ? 'Editar Despesa' : (categoriaNova === 'condominio' ? 'Novo Condomínio' : 'Nova Despesa');
+    document.getElementById('modal-despesa-titulo').textContent = titulo;
+    document.getElementById('btn-guardar-despesa-text').textContent = despesa ? 'Guardar Alterações' : 'Guardar Despesa';
+
+    document.getElementById('d-nome').value = despesa?.nome || (categoriaNova === 'condominio' ? 'Condomínio' : '');
+    document.getElementById('d-valor').value = despesa?.valor_mensal ?? '';
+    document.getElementById('d-data').value = despesa?.data || todayISO();
+    document.getElementById('d-tipo').value = despesa?.tipo || 'variavel';
+    document.getElementById('d-periodicidade').value = despesa?.periodicidade || 'mensal';
+    document.getElementById('d-ativo').checked = despesa ? !!despesa.ativo : true;
+    document.getElementById('d-notas').value = despesa?.notas || '';
+
+    document.getElementById('d-fatura').value = '';
+    faturaActualPath = despesa?.fatura_path || null;
+    removerFaturaFlag = false;
+    document.getElementById('d-fatura-actual').style.display = faturaActualPath ? 'block' : 'none';
+    if (faturaActualPath) {
+      document.getElementById('d-link-fatura-actual').onclick = (e) => { e.preventDefault(); abrirFatura(faturaActualPath); };
+    }
+
+    document.getElementById('modal-despesa').style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+
+  function fecharModalDespesa() {
+    document.getElementById('modal-despesa').style.display = 'none';
+    document.body.style.overflow = '';
+    editandoDespesaId = null;
+  }
+
+  document.getElementById('btn-nova-despesa').addEventListener('click', () => abrirModalDespesa());
+  document.getElementById('btn-fechar-modal-despesa').addEventListener('click', fecharModalDespesa);
+  document.getElementById('btn-cancelar-despesa').addEventListener('click', fecharModalDespesa);
+  document.getElementById('modal-despesa').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModalDespesa(); });
+
+  document.getElementById('btn-remover-fatura-despesa').addEventListener('click', () => {
+    removerFaturaFlag = true;
+    document.getElementById('d-fatura-actual').style.display = 'none';
+  });
+
+  document.getElementById('btn-guardar-despesa').addEventListener('click', async () => {
+    const nome = document.getElementById('d-nome').value.trim();
+    const valor = parseFloat(document.getElementById('d-valor').value);
+    const data = document.getElementById('d-data').value;
+    if (!nome) { toast('O nome é obrigatório.', 'error'); return; }
+    if (!valor || valor <= 0) { toast('Indica um valor válido.', 'error'); return; }
+    if (!data) { toast('Indica a data da despesa.', 'error'); return; }
+
+    document.getElementById('btn-guardar-despesa-text').style.display = 'none';
+    document.getElementById('btn-guardar-despesa-spinner').style.display = 'inline-block';
+
+    const dados = {
+      user_id:       session.user.id,
+      imovel_id:     id,
+      nome,
+      categoria:     categoriaDespesaAtual,
+      tipo:          document.getElementById('d-tipo').value,
+      valor_mensal:  valor,
+      data,
+      periodicidade: document.getElementById('d-periodicidade').value,
+      ativo:         document.getElementById('d-ativo').checked,
+      notas:         document.getElementById('d-notas').value || null,
+    };
+
+    try {
+      const ficheiroFatura = document.getElementById('d-fatura').files[0];
+      if (ficheiroFatura) {
+        dados.fatura_path = await uploadFatura(ficheiroFatura);
+        if (faturaActualPath) await apagarFatura(faturaActualPath);
+      } else if (removerFaturaFlag && faturaActualPath) {
+        await apagarFatura(faturaActualPath);
+        dados.fatura_path = null;
+      }
+    } catch (err) {
+      document.getElementById('btn-guardar-despesa-text').style.display = 'inline';
+      document.getElementById('btn-guardar-despesa-spinner').style.display = 'none';
+      toast('Erro ao enviar a factura: ' + err.message, 'error');
+      return;
+    }
+
+    const { error: errDespesa } = editandoDespesaId
+      ? await sb.from('despesas').update(dados).eq('id', editandoDespesaId)
+      : await sb.from('despesas').insert(dados);
+
+    document.getElementById('btn-guardar-despesa-text').style.display = 'inline';
+    document.getElementById('btn-guardar-despesa-spinner').style.display = 'none';
+
+    if (errDespesa) { toast('Erro ao guardar: ' + errDespesa.message, 'error'); return; }
+
+    toast(editandoDespesaId ? 'Despesa actualizada.' : 'Despesa adicionada.');
+    fecharModalDespesa();
+    await carregar();
+  });
+
+  async function apagarDespesaImovel(despesaId) {
+    const despesa = despesasImovel.find(d => d.id === despesaId);
+    if (!confirm(`Apagar a despesa "${despesa?.nome}"? Esta acção é irreversível.`)) return;
+    const { error } = await sb.from('despesas').delete().eq('id', despesaId);
+    if (error) { toast('Erro ao apagar: ' + error.message, 'error'); return; }
+    if (despesa?.fatura_path) await apagarFatura(despesa.fatura_path);
+    toast('Despesa apagada.');
+    await carregar();
+  }
+
+  // ---- Apagar ----
+  document.getElementById('btn-apagar').addEventListener('click', async () => {
+    if (!confirm(`Apagar "${imovel?.nome}"? Esta acção é irreversível.`)) return;
+    const { error } = await sb.from('properties').delete().eq('id', id);
+    if (error) { toast('Erro ao apagar: ' + error.message, 'error'); return; }
+    window.location.href = 'imoveis.html';
+  });
+
+  await carregar();
+  if (window.lucide) lucide.createIcons();
+})();
+</script>
+
+</body>
+</html>

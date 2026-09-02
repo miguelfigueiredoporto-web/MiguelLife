@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>Miguel Life — Definições</title>
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/theme-glass.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+<body>
+
+<div class="bg-photo"></div>
+<div class="glow-blob glow-1"></div>
+<div class="glow-blob glow-2"></div>
+<div class="glow-blob glow-3"></div>
+<div class="glow-blob glow-4"></div>
+
+<div class="app-shell">
+  <nav class="sidebar" id="sidebar"></nav>
+
+  <main class="main-content page-fade">
+
+    <div class="page-header">
+      <h1>Definições</h1>
+    </div>
+
+    <!-- Conta -->
+    <div class="card card-glass" style="margin-bottom:16px;">
+      <div class="card-header">
+        <span class="card-title">Conta</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+        <div style="width:52px;height:52px;border-radius:50%;background:var(--green-dim);border:2px solid var(--green);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:1.2rem;color:var(--green);">M</div>
+        <div>
+          <div style="font-weight:600;">Miguel</div>
+          <div style="font-size:0.82rem;color:var(--text-muted);" id="user-email">miguelfigueiredoporto@gmail.com</div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm">
+        <i data-lucide="edit-2" width="14" height="14"></i>
+        Editar perfil
+      </button>
+    </div>
+
+    <!-- Supabase / Ligação -->
+    <div class="card card-glass" style="margin-bottom:16px;">
+      <div class="card-header">
+        <span class="card-title">Ligação à Base de Dados</span>
+        <span class="tag tag-yellow">Pendente</span>
+      </div>
+      <p style="font-size:0.875rem;margin-bottom:16px;">Para activar a app completamente, precisas de configurar o Supabase com as tuas credenciais.</p>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label class="form-label">Supabase URL</label>
+        <input class="form-input" type="text" placeholder="https://xxxx.supabase.co" id="input-supabase-url">
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label class="form-label">Supabase Anon Key</label>
+        <input class="form-input" type="password" placeholder="eyJh…" id="input-supabase-key">
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary btn-sm" id="btn-guardar-supabase">
+          <i data-lucide="save" width="14" height="14"></i>
+          Guardar e testar ligação
+        </button>
+      </div>
+      <div style="margin-top:12px;padding:12px;background:var(--bg-elevated);border-radius:var(--radius-md);font-size:0.78rem;color:var(--text-muted);">
+        <strong style="color:var(--text-secondary);">Como obter as credenciais:</strong><br>
+        1. Vai a supabase.com → cria um projecto<br>
+        2. Em Project Settings → API → copia o Project URL e o anon public key<br>
+        3. Cola aqui e guarda
+      </div>
+    </div>
+
+    <!-- Utilizadores -->
+    <div class="card card-glass" style="margin-bottom:16px;">
+      <div class="card-header">
+        <span class="card-title">Utilizadores</span>
+      </div>
+      <div class="list-item" style="padding:12px 0;">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--green-dim);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;color:var(--green);">M</div>
+        <div style="flex:1;">
+          <div style="font-size:0.875rem;font-weight:500;">Miguel</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);">miguelfigueiredoporto@gmail.com</div>
+        </div>
+        <span class="tag tag-blue">Admin</span>
+      </div>
+      <div class="list-item" style="padding:12px 0;border-bottom:none;">
+        <div style="width:36px;height:36px;border-radius:50%;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.9rem;color:var(--text-muted);">P</div>
+        <div style="flex:1;">
+          <div style="font-size:0.875rem;font-weight:500;color:var(--text-muted);">Parceira</div>
+          <div style="font-size:0.72rem;color:var(--text-muted);">— a convidar</div>
+        </div>
+        <button class="btn btn-secondary btn-sm">Convidar</button>
+      </div>
+    </div>
+
+    <!-- Zona perigosa -->
+    <div class="card card-glass" style="border-color:var(--red-dim);">
+      <div class="card-header">
+        <span class="card-title" style="color:var(--red);">Zona Perigosa</span>
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+        <div>
+          <div style="font-size:0.875rem;font-weight:500;">Terminar sessão</div>
+          <div style="font-size:0.78rem;color:var(--text-muted);">Sair da app em todos os dispositivos</div>
+        </div>
+        <button class="btn btn-danger btn-sm" id="btn-signout-page">
+          <i data-lucide="log-out" width="14" height="14"></i>
+          Sair
+        </button>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<nav class="bottom-nav" id="bottom-nav"></nav>
+<div id="toast-container"></div>
+
+<script src="js/nav.js"></script>
+<script>
+  document.getElementById('btn-guardar-supabase').addEventListener('click', () => {
+    const url = document.getElementById('input-supabase-url').value.trim();
+    const key = document.getElementById('input-supabase-key').value.trim();
+    if (!url || !key) {
+      alert('Preenche os dois campos.');
+      return;
+    }
+    // TODO: guardar em localStorage e testar ligação
+    alert('Credenciais guardadas. Edita js/supabase.js com estes valores para activar a ligação.');
+  });
+
+  document.getElementById('btn-signout-page').addEventListener('click', () => {
+    if (confirm('Tens a certeza que queres sair?')) {
+      window.location.href = 'index.html';
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (window.lucide) lucide.createIcons();
+  });
+</script>
+
+</body>
+</html>
