@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="css/theme-glass.css">
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <style>
     /* Blocos compactos para caberem numa página sem scroll */
@@ -329,6 +330,8 @@
         return g;
       }
 
+      if (window.ChartDataLabels) Chart.register(window.ChartDataLabels);
+
       new Chart(ctxFluxo, {
         type: 'bar',
         data: {
@@ -352,12 +355,10 @@
           responsive: true,
           maintainAspectRatio: false,
           animation: { duration: 700, easing: 'easeOutQuart' },
+          layout: { padding: { top: 20 } },
           scales: {
             x: { grid: { display: false }, ticks: { color: corMuted, font: { size: 11 } } },
-            y: {
-              grid: { display: false },
-              ticks: { color: corMuted, font: { size: 11 }, callback: v => fmt(v) },
-            },
+            y: { display: false },
           },
           plugins: {
             legend: {
@@ -370,6 +371,14 @@
               padding: 10,
               cornerRadius: 8,
               callbacks: { label: c => ` ${c.dataset.label}: ${fmtEUR(c.raw)}` },
+            },
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              offset: 2,
+              color: corMuted,
+              font: { size: 9.5, weight: '600' },
+              formatter: v => fmt(v),
             },
           },
         },
