@@ -62,6 +62,9 @@
 
     <p id="erro-dashboard" style="display:none;color:var(--red);font-size:0.82rem;margin-bottom:16px;"></p>
 
+    <!-- Rendas em atraso — só aparece quando há alguma, verificação automática -->
+    <div id="alerta-atraso" style="display:none;"></div>
+
     <!-- Stats grid -->
     <div class="stats-grid">
       <div class="stat-card card-glass">
@@ -233,6 +236,7 @@
       { data: despesasMes },
       { data: despesasHistorico },
       { data: pagamentosHistorico },
+      { data: pagamentosMesAtual },
     ] = await Promise.all([
       sb.from('properties').select('*'),
       sb.from('income_sources').select('*').eq('ativo', true),
@@ -240,6 +244,7 @@
       sb.from('despesas').select('*').eq('ativo', true).gte('data', primeiroDiaMes).lte('data', ultimoDiaMes),
       sb.from('despesas').select('*').gte('data', primeiroDia6Meses).lte('data', ultimoDiaMes),
       sb.from('pagamentos').select('*').eq('estado', 'pago'),
+      sb.from('pagamentos').select('*').eq('mes', mesAtual).eq('ano', anoAtual),
     ]);
 
     const imoveis        = properties || [];
@@ -248,6 +253,44 @@
     const despesas        = despesasMes || [];
     const imoveisAtivos     = imoveis.filter(i => i.estado !== 'vendido');
     const imoveisArrendados = imoveis.filter(i => i.estado === 'arrendado');
+
+    // Rendas em atraso este mês — verificação automática (sem ser preciso ir a Arrendamentos conferir)
+    const diaAtual = hoje.getDate();
+    const rendasEmAtraso = imoveisArrendados.filter(im => {
+      const pag = (pagamentosMesAtual || []).find(p => p.imovel_id === im.id);
+      const estadoPag = pag ? pag.estado : 'pendente';
+      if (estadoPag !== 'pendente') return false;
+      const limite = im.dia_limite_pagamento || 8;
+      return diaAtual > limite;
+    });
+
+    if (rendasEmAtraso.length > 0) {
+      const alerta = document.getElementById('alerta-atraso');
+      alerta.style.display = 'block';
+      alerta.innerHTML = `
+        <div class="card card-glass" style="margin-bottom:12px;padding:14px 16px;border:1px solid var(--red-dim);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+            <i data-lucide="alert-triangle" width="16" height="16" style="color:var(--red);flex-shrink:0;"></i>
+            <span style="font-size:0.82rem;font-weight:700;color:var(--red);">
+              ${rendasEmAtraso.length} renda${rendasEmAtraso.length !== 1 ? 's' : ''} em atraso este mês
+            </span>
+          </div>
+          ${rendasEmAtraso.map(im => {
+            const diasAtraso = diaAtual - (im.dia_limite_pagamento || 8);
+            return `
+            <a href="arrendamentos.html" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;text-decoration:none;color:inherit;border-top:1px solid var(--border);">
+              <span style="font-size:0.8rem;">
+                <strong>${im.nome || '—'}</strong>
+                ${im.inquilino_nome ? ` · ${im.inquilino_nome}` : ''}
+              </span>
+              <span style="font-size:0.72rem;color:var(--red);white-space:nowrap;margin-left:12px;">
+                ${diasAtraso} dia${diasAtraso !== 1 ? 's' : ''} de atraso
+              </span>
+            </a>`;
+          }).join('')}
+        </div>
+      `;
+    }
 
     // Rendimento mensal = rendas dos imóveis arrendados + fontes de rendimento activas
     const rendaImoveis   = imoveisArrendados.reduce((s, i) => s + (Number(i.renda_mensal) || 0), 0);
