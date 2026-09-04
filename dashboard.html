@@ -119,10 +119,14 @@
 
     <!-- Rendimentos vs Despesas -->
     <div class="card card-glass" style="margin-top:12px;padding:16px;">
-      <div class="card-header" style="margin-bottom:8px;">
+      <div class="card-header" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
         <span class="card-title" style="font-size:0.82rem;">Rendimentos vs Despesas — últimos 6 meses</span>
+        <div style="display:flex;align-items:center;gap:14px;font-size:0.72rem;color:var(--text-muted);">
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:#30d178;display:inline-block;"></span>Rendimentos</span>
+          <span style="display:flex;align-items:center;gap:5px;"><span style="width:8px;height:8px;border-radius:50%;background:#ff4558;display:inline-block;"></span>Despesas</span>
+        </div>
       </div>
-      <div style="position:relative;height:150px;">
+      <div style="position:relative;height:150px;margin-top:6px;">
         <canvas id="chart-fluxo"></canvas>
       </div>
       <p style="margin-top:8px;font-size:0.65rem;color:var(--text-muted);line-height:1.4;">
@@ -361,11 +365,7 @@
             y: { display: false },
           },
           plugins: {
-            legend: {
-              position: 'top',
-              align: 'end',
-              labels: { color: corTexto, boxWidth: 10, boxHeight: 10, usePointStyle: true, pointStyle: 'circle', font: { size: 12 } },
-            },
+            legend: { display: false },
             tooltip: {
               backgroundColor: 'rgba(20,20,28,0.9)',
               padding: 10,
