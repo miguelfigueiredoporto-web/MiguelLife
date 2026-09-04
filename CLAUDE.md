@@ -78,6 +78,7 @@ Registo e acompanhamento de cada imóvel de investimento.
   - Imposto sobre rendas (categoria F — 19% taxa autónoma ou englobamento)
   - Renda líquida após imposto (calculado automaticamente)
   - Lista de meses do contrato (desde o início até hoje) em que se pode marcar cada mês como pago/pendente — usa a mesma tabela `pagamentos` da secção Arrendamentos, por isso o estado fica sempre sincronizado entre as duas páginas
+  - **Conciliação de extracto bancário** (botão "Conciliar Extracto" em Arrendamentos): o Miguel exporta um CSV do banco e carrega na app; mapeia colunas (Data/Valor/Descrição) manualmente ou por sugestão automática, e a app associa cada movimento recebido (valor ± 1€) à renda esperada de cada imóvel no mês da transacção, marcando-a como paga após confirmação — sem ligação directa a nenhum banco, tudo local ao ficheiro carregado
 - Valor de mercado estimado atual (para calcular mais-valia latente)
 - Se vendido: data de venda, valor de venda
 
