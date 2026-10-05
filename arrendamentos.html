@@ -710,17 +710,22 @@
       return { texto, posX };
     }
 
-    // Procura, em qualquer linha, a palavra do cabeçalho "Crédito" / "Saldo" — tolerante a erros de
-    // codificação de alguns PDFs de bancos (ex: "CrØdito" em vez de "Crédito")
+    // Procura a linha de cabeçalho da tabela de movimentos ("Débito | Crédito | Saldo") — tolerante
+    // a erros de codificação de alguns PDFs de bancos (ex: "CrØdito" em vez de "Crédito"). Alguns
+    // extractos têm outras tabelas (ex: um resumo) que também mencionam "Crédito"/"Saldo" mas por
+    // outra ordem — só aceitamos a linha se Débito, Crédito e Saldo aparecerem pela ordem certa.
     function encontrarColunasCabecalho(linhas) {
       for (const frags of linhas) {
-        let xCredito = null, xSaldo = null;
+        let xCredito = null, xSaldo = null, xDebito = null;
         frags.forEach(f => {
           const t = f.texto.toLowerCase();
           if (/cr.?dito/.test(t)) xCredito = f.x;
           if (/saldo/.test(t)) xSaldo = f.x;
+          if (/d.?bito/.test(t)) xDebito = f.x;
         });
-        if (xCredito != null) return { xCredito, xSaldo };
+        if (xDebito != null && xCredito != null && xSaldo != null && xDebito < xCredito && xCredito < xSaldo) {
+          return { xCredito, xSaldo };
+        }
       }
       return null;
     }
