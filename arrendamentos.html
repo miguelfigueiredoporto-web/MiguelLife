@@ -672,6 +672,8 @@
 
     // Reconstrói linhas de texto a partir das posições dos fragmentos do PDF
     // (o PDF.js devolve pedaços de texto soltos, não linhas já formadas)
+    // Devolve, por linha, os fragmentos de texto com a respectiva posição horizontal (x),
+    // para conseguirmos saber a que coluna (Débito/Crédito/Saldo) cada número pertence.
     async function extrairLinhasPDF(ficheiro) {
       const buffer = await ficheiro.arrayBuffer();
       const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
@@ -686,26 +688,67 @@
           porLinha[y].push({ x: item.transform[4], texto: item.str });
         });
         Object.keys(porLinha).map(Number).sort((a, b) => b - a).forEach(y => {
-          const linha = porLinha[y].sort((a, b) => a.x - b.x).map(i => i.texto).join(' ').replace(/\s+/g, ' ').trim();
-          if (linha) linhasTotal.push(linha);
+          const frags = porLinha[y].sort((a, b) => a.x - b.x).filter(f => f.texto.trim());
+          if (frags.length) linhasTotal.push(frags);
         });
       }
       return linhasTotal;
     }
 
-    // Tenta encontrar uma data e um valor em cada linha de texto do PDF
+    // Procura a linha de cabeçalho ("Débito", "Crédito", "Saldo") para saber a posição de cada coluna
+    function encontrarColunasCabecalho(linhas) {
+      for (const frags of linhas) {
+        let xCredito = null, xSaldo = null;
+        frags.forEach(f => {
+          const t = f.texto.toLowerCase();
+          if (/cr[ée]dito/.test(t)) xCredito = f.x;
+          if (/saldo/.test(t)) xSaldo = f.x;
+        });
+        if (xCredito != null) return { xCredito, xSaldo };
+      }
+      return null;
+    }
+
+    // Tenta encontrar uma data e o valor da coluna "Crédito" em cada linha de texto do PDF
     function extrairTransacoesPDF(linhas) {
       const reData = /\b(\d{2}[\/\-.]\d{2}[\/\-.]\d{2,4})\b/;
-      const reValor = /(-?\d{1,3}(?:[.\s]\d{3})*,\d{2})\s*(?:€|EUR)?\s*$/;
+      const reValorFrag = /^-?\d{1,3}(?:[.\s]\d{3})*,\d{2}$/;
+      const colunas = encontrarColunasCabecalho(linhas);
       const candidatos = [];
-      linhas.forEach(linha => {
-        const mData = linha.match(reData);
-        const mValor = linha.match(reValor);
-        if (!mData || !mValor) return;
+
+      linhas.forEach(frags => {
+        const linhaTexto = frags.map(f => f.texto).join(' ');
+        const mData = linhaTexto.match(reData);
+        if (!mData) return;
         const dataObj = parseDataPT(mData[1]);
-        const valor = parseValorPT(mValor[1]);
-        if (!dataObj || isNaN(valor)) return;
-        const descricao = linha.replace(mData[0], '').replace(mValor[0], '').replace(/\s+/g, ' ').trim();
+        if (!dataObj) return;
+
+        const valores = frags.filter(f => reValorFrag.test(f.texto.trim()));
+        if (valores.length === 0) return;
+
+        let fragEscolhido = null;
+        if (colunas && colunas.xCredito != null) {
+          const limiteInferior = colunas.xCredito - 15;
+          const limiteSuperior = colunas.xSaldo != null ? colunas.xSaldo - 8 : colunas.xCredito + 70;
+          const naColuna = valores.filter(f => f.x >= limiteInferior && f.x < limiteSuperior);
+          if (naColuna.length === 0) return; // nada na coluna "Crédito" nesta linha — provavelmente um débito
+          fragEscolhido = naColuna[naColuna.length - 1];
+        } else if (valores.length >= 2) {
+          // não encontrei o cabeçalho "Crédito" — assume-se penúltimo valor = crédito, último = saldo
+          fragEscolhido = valores[valores.length - 2];
+        } else {
+          fragEscolhido = valores[valores.length - 1];
+        }
+
+        const valor = parseValorPT(fragEscolhido.texto);
+        if (isNaN(valor)) return;
+
+        const descricao = frags
+          .filter(f => f !== fragEscolhido && !reValorFrag.test(f.texto.trim()))
+          .map(f => f.texto).join(' ')
+          .replace(mData[0], '')
+          .replace(/\s+/g, ' ').trim();
+
         candidatos.push({ data: dataObj, valor, descricao });
       });
       return candidatos;
