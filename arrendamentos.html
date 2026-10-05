@@ -17,6 +17,7 @@
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <style>
     .filtros-bar {
       display: flex;
@@ -207,12 +208,15 @@
       <!-- Passo 1: carregar ficheiro e mapear colunas -->
       <div id="conc-passo-1">
         <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:14px;">
-          Exporta um extracto (CSV) do teu banco e carrega aqui. A app tenta associar automaticamente cada movimento recebido a uma renda esperada — tu confirmas antes de gravar.
+          Exporta um extracto do teu banco (CSV ou PDF) e carrega aqui. A app tenta associar automaticamente cada movimento recebido a uma renda esperada — tu confirmas antes de gravar.
         </p>
         <div class="form-group">
-          <label class="form-label">Ficheiro CSV</label>
-          <input class="form-input" type="file" id="conc-ficheiro" accept=".csv,text/csv">
+          <label class="form-label">Ficheiro (CSV ou PDF)</label>
+          <input class="form-input" type="file" id="conc-ficheiro" accept=".csv,text/csv,.pdf,application/pdf">
         </div>
+        <p id="conc-aviso-pdf" style="display:none;font-size:0.72rem;color:var(--yellow);background:var(--yellow-dim);padding:8px 10px;border-radius:8px;margin-top:10px;">
+          PDF: a leitura dos movimentos é uma tentativa automática (não há colunas definidas como no CSV) — revê com atenção a lista antes de confirmar, pode haver linhas erradas ou em falta. Se o teu banco permitir exportar CSV, é mais fiável.
+        </p>
         <div id="conc-mapeamento" style="display:none;margin-top:16px;">
           <div class="conc-mapa">
             <div class="form-group">
@@ -633,7 +637,13 @@
 
     // ---- Conciliação de extracto bancário (CSV) ----
     let concTransacoes = []; // linhas cruas do CSV (sem cabeçalho)
+    let concTransacoesPdf = []; // {data, valor, descricao} extraídos directamente de um PDF
+    let concModoPdf = false;
     let concLinhas = []; // {data, valor, descricao, mes, ano, imovelId, ignorar}
+
+    if (window.pdfjsLib) {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
 
     function parseValorPT(txt) {
       if (typeof txt === 'number') return txt;
@@ -660,33 +670,68 @@
       return idx >= 0 ? idx : 0;
     }
 
-    function abrirModalConciliar() {
-      document.getElementById('conc-ficheiro').value = '';
-      document.getElementById('conc-mapeamento').style.display = 'none';
-      document.getElementById('conc-inverter-sinal').checked = false;
-      document.getElementById('conc-passo-1').style.display = 'block';
-      document.getElementById('conc-passo-2').style.display = 'none';
-      document.getElementById('btn-conc-continuar').style.display = 'inline-flex';
-      document.getElementById('btn-conc-confirmar').style.display = 'none';
-      concTransacoes = [];
-      concLinhas = [];
-      document.getElementById('modal-conciliar').style.display = 'flex';
-      document.body.style.overflow = 'hidden';
+    // Reconstrói linhas de texto a partir das posições dos fragmentos do PDF
+    // (o PDF.js devolve pedaços de texto soltos, não linhas já formadas)
+    async function extrairLinhasPDF(ficheiro) {
+      const buffer = await ficheiro.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+      const linhasTotal = [];
+      for (let p = 1; p <= pdf.numPages; p++) {
+        const page = await pdf.getPage(p);
+        const content = await page.getTextContent();
+        const porLinha = {};
+        content.items.forEach(item => {
+          const y = Math.round(item.transform[5]);
+          if (!porLinha[y]) porLinha[y] = [];
+          porLinha[y].push({ x: item.transform[4], texto: item.str });
+        });
+        Object.keys(porLinha).map(Number).sort((a, b) => b - a).forEach(y => {
+          const linha = porLinha[y].sort((a, b) => a.x - b.x).map(i => i.texto).join(' ').replace(/\s+/g, ' ').trim();
+          if (linha) linhasTotal.push(linha);
+        });
+      }
+      return linhasTotal;
     }
 
-    function fecharModalConciliar() {
-      document.getElementById('modal-conciliar').style.display = 'none';
-      document.body.style.overflow = '';
+    // Tenta encontrar uma data e um valor em cada linha de texto do PDF
+    function extrairTransacoesPDF(linhas) {
+      const reData = /\b(\d{2}[\/\-.]\d{2}[\/\-.]\d{2,4})\b/;
+      const reValor = /(-?\d{1,3}(?:[.\s]\d{3})*,\d{2})\s*(?:€|EUR)?\s*$/;
+      const candidatos = [];
+      linhas.forEach(linha => {
+        const mData = linha.match(reData);
+        const mValor = linha.match(reValor);
+        if (!mData || !mValor) return;
+        const dataObj = parseDataPT(mData[1]);
+        const valor = parseValorPT(mValor[1]);
+        if (!dataObj || isNaN(valor)) return;
+        const descricao = linha.replace(mData[0], '').replace(mValor[0], '').replace(/\s+/g, ' ').trim();
+        candidatos.push({ data: dataObj, valor, descricao });
+      });
+      return candidatos;
     }
 
-    document.getElementById('btn-conciliar').addEventListener('click', abrirModalConciliar);
-    document.getElementById('btn-fechar-modal-conciliar').addEventListener('click', fecharModalConciliar);
-    document.getElementById('btn-cancelar-conciliar').addEventListener('click', fecharModalConciliar);
-    document.getElementById('modal-conciliar').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModalConciliar(); });
+    async function processarPDF(ficheiro) {
+      if (!window.pdfjsLib) { toastLocal('Não foi possível carregar o leitor de PDF.', 'error'); return; }
+      try {
+        const linhas = await extrairLinhasPDF(ficheiro);
+        const transacoes = extrairTransacoesPDF(linhas);
+        if (transacoes.length === 0) {
+          toastLocal('Não consegui encontrar movimentos neste PDF. Se o teu banco permitir exportar CSV, tenta assim.', 'error');
+          return;
+        }
+        concModoPdf = true;
+        concTransacoesPdf = transacoes;
+        document.getElementById('conc-aviso-pdf').style.display = 'block';
+        toastLocal(`${transacoes.length} movimento(s) encontrados no PDF — revê no passo seguinte.`, 'info');
+      } catch (err) {
+        console.error(err);
+        toastLocal('Erro ao ler o PDF: ' + err.message, 'error');
+      }
+    }
 
-    document.getElementById('conc-ficheiro').addEventListener('change', (e) => {
-      const ficheiro = e.target.files[0];
-      if (!ficheiro || !window.Papa) return;
+    function processarCSV(ficheiro) {
+      if (!window.Papa) return;
       Papa.parse(ficheiro, {
         skipEmptyLines: true,
         complete: (resultado) => {
@@ -708,25 +753,73 @@
         },
         error: () => toastLocal('Erro ao ler o ficheiro CSV.', 'error'),
       });
+    }
+
+    function abrirModalConciliar() {
+      document.getElementById('conc-ficheiro').value = '';
+      document.getElementById('conc-mapeamento').style.display = 'none';
+      document.getElementById('conc-aviso-pdf').style.display = 'none';
+      document.getElementById('conc-inverter-sinal').checked = false;
+      document.getElementById('conc-passo-1').style.display = 'block';
+      document.getElementById('conc-passo-2').style.display = 'none';
+      document.getElementById('btn-conc-continuar').style.display = 'inline-flex';
+      document.getElementById('btn-conc-confirmar').style.display = 'none';
+      concTransacoes = [];
+      concTransacoesPdf = [];
+      concModoPdf = false;
+      concLinhas = [];
+      document.getElementById('modal-conciliar').style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+    }
+
+    function fecharModalConciliar() {
+      document.getElementById('modal-conciliar').style.display = 'none';
+      document.body.style.overflow = '';
+    }
+
+    document.getElementById('btn-conciliar').addEventListener('click', abrirModalConciliar);
+    document.getElementById('btn-fechar-modal-conciliar').addEventListener('click', fecharModalConciliar);
+    document.getElementById('btn-cancelar-conciliar').addEventListener('click', fecharModalConciliar);
+    document.getElementById('modal-conciliar').addEventListener('click', e => { if (e.target === e.currentTarget) fecharModalConciliar(); });
+
+    document.getElementById('conc-ficheiro').addEventListener('change', (e) => {
+      const ficheiro = e.target.files[0];
+      if (!ficheiro) return;
+      concModoPdf = ficheiro.type === 'application/pdf' || ficheiro.name.toLowerCase().endsWith('.pdf');
+      document.getElementById('conc-mapeamento').style.display = 'none';
+      document.getElementById('conc-aviso-pdf').style.display = 'none';
+      if (concModoPdf) {
+        processarPDF(ficheiro);
+      } else {
+        processarCSV(ficheiro);
+      }
     });
 
     document.getElementById('btn-conc-continuar').addEventListener('click', () => {
-      if (concTransacoes.length === 0) { toastLocal('Carrega um ficheiro CSV primeiro.', 'error'); return; }
-      const iData = parseInt(document.getElementById('conc-col-data').value, 10);
-      const iValor = parseInt(document.getElementById('conc-col-valor').value, 10);
-      const iDesc = parseInt(document.getElementById('conc-col-desc').value, 10);
-      const inverter = document.getElementById('conc-inverter-sinal').checked;
       const TOLERANCIA = 1; // €
+      let brutos = [];
+
+      if (concModoPdf) {
+        if (concTransacoesPdf.length === 0) { toastLocal('Carrega um ficheiro primeiro.', 'error'); return; }
+        brutos = concTransacoesPdf;
+      } else {
+        if (concTransacoes.length === 0) { toastLocal('Carrega um ficheiro CSV primeiro.', 'error'); return; }
+        const iData = parseInt(document.getElementById('conc-col-data').value, 10);
+        const iValor = parseInt(document.getElementById('conc-col-valor').value, 10);
+        const iDesc = parseInt(document.getElementById('conc-col-desc').value, 10);
+        const inverter = document.getElementById('conc-inverter-sinal').checked;
+        brutos = concTransacoes.map(linha => {
+          const dataObj = parseDataPT(linha[iData]);
+          let valor = parseValorPT(linha[iValor]);
+          if (inverter && !isNaN(valor)) valor = -valor;
+          return { data: dataObj, valor, descricao: String(linha[iDesc] || '').trim() };
+        });
+      }
 
       concLinhas = [];
-      concTransacoes.forEach(linha => {
-        const dataObj = parseDataPT(linha[iData]);
-        let valor = parseValorPT(linha[iValor]);
-        if (isNaN(valor) || !dataObj) return;
-        if (inverter) valor = -valor;
-        if (valor <= 0) return; // só movimentos recebidos
+      brutos.forEach(({ data: dataObj, valor, descricao }) => {
+        if (!dataObj || isNaN(valor) || valor <= 0) return; // só movimentos recebidos
 
-        const descricao = String(linha[iDesc] || '').trim();
         const mes = dataObj.getMonth() + 1;
         const ano = dataObj.getFullYear();
 
