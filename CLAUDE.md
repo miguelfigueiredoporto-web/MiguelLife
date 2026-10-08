@@ -75,7 +75,7 @@ Registo e acompanhamento de cada imóvel de investimento.
   - Data início do contrato
   - Nome do inquilino (opcional)
   - Caução paga (por contrato, editável na secção Arrendamento do imóvel)
-  - Imposto sobre rendas (categoria F — 19% taxa autónoma ou englobamento)
+  - Imposto sobre rendas (categoria F — 10% taxa autónoma ou englobamento)
   - Renda líquida após imposto (calculado automaticamente)
   - Lista de meses do contrato (desde o início até hoje) em que se pode marcar cada mês como pago/pendente — usa a mesma tabela `pagamentos` da secção Arrendamentos, por isso o estado fica sempre sincronizado entre as duas páginas
   - **Conciliação de extracto bancário** (botão "Conciliar Extracto" em Arrendamentos): o Miguel exporta um CSV do banco e carrega na app; mapeia colunas (Data/Valor/Descrição) manualmente ou por sugestão automática, e a app associa cada movimento recebido (valor ± 1€) à renda esperada de cada imóvel no mês da transacção, marcando-a como paga após confirmação — sem ligação directa a nenhum banco, tudo local ao ficheiro carregado
@@ -362,7 +362,7 @@ tasks (
 ## Contexto do Miguel (para decisões de produto)
 
 - Dono/broker de 2 agências RE/MAX em Portugal (RE/MAX We Go)
-- Tem imóveis arrendados (rendimentos categoria F — taxa autónoma 19% ou englobamento)
+- Tem imóveis arrendados (rendimentos categoria F — taxa autónoma 10% ou englobamento)
 - Investe em ETFs
 - Investe na sua marca pessoal
 - Quer largar os Google Sheets de vez
@@ -377,6 +377,6 @@ tasks (
 - Quando criares uma nova página, segue sempre a estrutura de ficheiros definida acima
 - Verifica sempre se o utilizador está autenticado antes de mostrar qualquer dado
 - Os cálculos financeiros (yields, mais-valias, impostos) devem ser transparentes — mostrar sempre a fórmula usada ou uma tooltip explicativa
-- O imposto sobre rendas de imóveis usado nesta app é 19% sobre o valor bruto da renda (taxa autónoma) ou englobamento — o Miguel escolhe por imóvel
+- O imposto sobre rendas de imóveis usado nesta app é 10% sobre o valor bruto da renda (taxa autónoma) ou englobamento — o Miguel escolhe por imóvel
 - Prioriza sempre a experiência mobile: testa mentalmente cada UI num ecrã de 390px de largura
 - Quando tiveres dúvidas sobre requisitos, pergunta antes de implementar

@@ -257,7 +257,7 @@
           <div class="form-group">
             <label class="form-label">Regime fiscal</label>
             <select class="form-select" id="f-regime">
-              <option value="taxa_autonoma">Taxa autónoma (19%)</option>
+              <option value="taxa_autonoma">Taxa autónoma (10%)</option>
               <option value="englobamento">Englobamento</option>
             </select>
           </div>
@@ -678,7 +678,7 @@
   function renderDetalhe(im) {
     const obras = im.property_works || [];
     const totalObras = obras.reduce((s,o) => s + (o.valor||0), 0);
-    const impostoAnual = im.renda_mensal && im.regime_fiscal === 'taxa_autonoma' ? (im.renda_mensal*12*0.19) : 0;
+    const impostoAnual = im.renda_mensal && im.regime_fiscal === 'taxa_autonoma' ? (im.renda_mensal*12*0.10) : 0;
     const rendaLiquidaAnual = im.renda_mensal ? im.renda_mensal*12 - impostoAnual : null;
     const contratoAtivo = contratos.find(c => !c.data_fim);
     const despesasCondominio = despesasImovel.filter(d => d.categoria === 'condominio');
@@ -741,7 +741,7 @@
             ${row('Renda mensal', `<span style="color:var(--green);">${eur(im.renda_mensal)}</span>`)}
             ${im.data_inicio_contrato ? row('Início do contrato', data(im.data_inicio_contrato)) : ''}
             ${im.inquilino_nome ? row('Inquilino', im.inquilino_nome) : ''}
-            ${row('Regime fiscal', `<span class="tag tag-blue">${im.regime_fiscal === 'taxa_autonoma' ? 'Taxa autónoma 19%' : 'Englobamento'}</span>`)}
+            ${row('Regime fiscal', `<span class="tag tag-blue">${im.regime_fiscal === 'taxa_autonoma' ? 'Taxa autónoma 10%' : 'Englobamento'}</span>`)}
             <div class="list-item" style="padding:10px 0;">
               <span style="color:var(--text-muted);font-size:0.82rem;flex:1;">Caução</span>
               <span class="font-mono" style="font-size:0.875rem;margin-right:6px;">${contratoAtivo?.caucao != null ? eur(contratoAtivo.caucao) : '—'}</span>

@@ -180,7 +180,7 @@
             <th>Inquilino</th>
             <th>Início contrato</th>
             <th style="text-align:right;">Renda bruta</th>
-            <th style="text-align:right;">Imposto (19%)</th>
+            <th style="text-align:right;">Imposto (10%)</th>
             <th style="text-align:right;">Renda líquida</th>
             <th style="text-align:right;">Yield bruta</th>
             <th id="th-periodo" style="display:none;">Período</th>
@@ -505,7 +505,7 @@
     const totalRendaBruta = imoveis.reduce((s, i) => s + (Number(i.renda_mensal) || 0), 0);
     const totalImposto = imoveis.reduce((s, i) => {
       const r = Number(i.renda_mensal) || 0;
-      return s + (i.regime_fiscal === 'englobamento' ? 0 : r * 0.19);
+      return s + (i.regime_fiscal === 'englobamento' ? 0 : r * 0.10);
     }, 0);
     const totalLiquida = totalRendaBruta - totalImposto;
 
@@ -590,7 +590,7 @@
 
       tbody.innerHTML = linhas.map(({ imovel: i, mes, ano }) => {
         const renda   = Number(i.renda_mensal) || 0;
-        const imposto = i.regime_fiscal === 'englobamento' ? 0 : renda * 0.19;
+        const imposto = i.regime_fiscal === 'englobamento' ? 0 : renda * 0.10;
         const liquida = renda - imposto;
         const invTotal = investimentoTotal(i);
         const yieldBruta = invTotal ? (renda * 12 / invTotal) * 100 : null;
