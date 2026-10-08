@@ -264,7 +264,7 @@
 
   // ---- Formatadores ----
   const eur = v => v != null ? new Intl.NumberFormat('pt-PT', { style:'currency', currency:'EUR', maximumFractionDigits:0 }).format(v) : '—';
-  const eurM = v => { if (!v) return '—'; return Math.abs(v)>=1000 ? (v/1000).toFixed(1).replace('.',',')+' k€' : eur(v); };
+  const eurM = v => eur(v);
   const pct  = v => v != null ? v.toFixed(1).replace('.',',')+' %' : '—';
   const investimentoTotal = im => {
     const obras = (im.property_works||[]).reduce((s,o) => s + (Number(o.valor)||0), 0);

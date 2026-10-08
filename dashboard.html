@@ -227,9 +227,7 @@
     if (!session) { window.location.href = 'index.html'; return; }
 
     function fmt(v) {
-      if (Math.abs(v) >= 1000000) return (v/1000000).toFixed(1).replace('.',',') + ' M€';
-      if (Math.abs(v) >= 1000) return (v/1000).toFixed(1).replace('.',',') + ' k€';
-      return new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR'}).format(v);
+      return new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',minimumFractionDigits:0,maximumFractionDigits:0}).format(v);
     }
     function fmtEUR(v) {
       return new Intl.NumberFormat('pt-PT',{style:'currency',currency:'EUR',minimumFractionDigits:0,maximumFractionDigits:0}).format(v);
