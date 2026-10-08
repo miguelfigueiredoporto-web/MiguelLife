@@ -120,6 +120,35 @@
       </div>
     </div>
 
+    <!-- Resumo de rendas do ano -->
+    <div class="stats-grid" style="grid-template-columns: repeat(2, 1fr);">
+      <div class="stat-card card-glass">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="stat-label" id="stat-recebidas-label">Rendas Recebidas em —</div>
+            <div class="stat-value text-green" id="stat-rendas-recebidas">—</div>
+            <div class="stat-sub" id="stat-rendas-recebidas-sub">a carregar…</div>
+          </div>
+          <div class="stat-icon" style="background:var(--green-dim);">
+            <i data-lucide="check-circle-2" width="18" height="18" style="color:var(--green);"></i>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-card card-glass">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+          <div>
+            <div class="stat-label">Rendas por Receber</div>
+            <div class="stat-value text-red" id="stat-rendas-pendentes">—</div>
+            <div class="stat-sub" id="stat-rendas-pendentes-sub">a carregar…</div>
+          </div>
+          <div class="stat-icon" style="background:var(--red-dim);">
+            <i data-lucide="hourglass" width="18" height="18" style="color:var(--red);"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Rendimentos vs Despesas -->
     <div class="card card-glass" style="margin-top:12px;padding:16px;">
       <div class="card-header" style="margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
@@ -291,6 +320,64 @@
         </div>
       `;
     }
+
+    // Rendas recebidas vs por receber desde o início do ano — respeita o período real de cada
+    // contrato (um imóvel que começou a ser arrendado a meio do ano não conta nos meses anteriores)
+    const { data: contratosAno } = await sb
+      .from('contratos')
+      .select('*')
+      .in('imovel_id', imoveisArrendados.map(i => i.id));
+
+    const contratosPorImovel = {};
+    (contratosAno || []).forEach(c => {
+      if (!contratosPorImovel[c.imovel_id]) contratosPorImovel[c.imovel_id] = [];
+      contratosPorImovel[c.imovel_id].push(c);
+    });
+
+    function mesesArrendadoNoAno(imovel) {
+      const ctrs = contratosPorImovel[imovel.id] || [];
+      const periodos = ctrs.length > 0
+        ? ctrs.map(c => ({ inicio: c.data_inicio, fim: c.data_fim }))
+        : (imovel.data_inicio_contrato ? [{ inicio: imovel.data_inicio_contrato, fim: null }] : []);
+      const mesesSet = new Set();
+      periodos.forEach(p => {
+        if (!p.inicio) return;
+        const [anoIni, mesIni] = p.inicio.split('-').map(Number);
+        let anoFim, mesFim;
+        if (p.fim) { [anoFim, mesFim] = p.fim.split('-').map(Number); }
+        else { anoFim = anoAtual; mesFim = mesAtual; }
+        let a = anoIni, m = mesIni;
+        while (a < anoFim || (a === anoFim && m <= mesFim)) {
+          if (a === anoAtual && m <= mesAtual) mesesSet.add(m);
+          m++;
+          if (m > 12) { m = 1; a++; }
+        }
+      });
+      return [...mesesSet];
+    }
+
+    let totalRecebidoAno = 0;
+    let numPorReceber = 0;
+    let valorPorReceber = 0;
+
+    imoveisArrendados.forEach(im => {
+      mesesArrendadoNoAno(im).forEach(mes => {
+        const pago = (pagamentosHistorico || []).find(p => p.imovel_id === im.id && p.mes === mes && p.ano === anoAtual);
+        if (pago) {
+          totalRecebidoAno += Number(pago.valor_pago) || Number(im.renda_mensal) || 0;
+        } else {
+          numPorReceber++;
+          valorPorReceber += Number(im.renda_mensal) || 0;
+        }
+      });
+    });
+
+    document.getElementById('stat-recebidas-label').textContent = `Rendas Recebidas em ${anoAtual}`;
+    document.getElementById('stat-rendas-recebidas').textContent = fmt(totalRecebidoAno);
+    document.getElementById('stat-rendas-recebidas-sub').textContent = `desde Janeiro de ${anoAtual}`;
+    document.getElementById('stat-rendas-pendentes').textContent = numPorReceber;
+    document.getElementById('stat-rendas-pendentes-sub').textContent =
+      numPorReceber > 0 ? `${fmt(valorPorReceber)} por cobrar` : 'tudo recebido';
 
     // Rendimento mensal = rendas dos imóveis arrendados + fontes de rendimento activas
     const rendaImoveis   = imoveisArrendados.reduce((s, i) => s + (Number(i.renda_mensal) || 0), 0);

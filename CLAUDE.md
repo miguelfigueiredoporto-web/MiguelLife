@@ -46,6 +46,7 @@ Vista geral de tudo. Deve responder imediatamente às perguntas:
 
 Componentes:
 - Aviso de rendas em atraso: verificação automática ao abrir a página — se algum imóvel arrendado tiver a renda do mês corrente por pagar depois do dia limite (`dia_limite_pagamento`), aparece um cartão no topo a listar quem está em atraso e há quantos dias, sem ser preciso ir a Arrendamentos conferir
+- Resumo de rendas do ano: total recebido desde Janeiro do ano corrente (soma de `pagamentos.valor_pago` com estado "pago") e quantas rendas ainda faltam receber (meses em que o imóvel esteve arrendado, segundo o histórico de `contratos`, sem pagamento registado) — respeita o período real de cada contrato, não assume que um imóvel esteve sempre arrendado
 - Cards de resumo: Rendimento Mensal | Despesas Fixas | Saldo Mensal | Património Total
 - Gráfico de barras: Rendimentos vs Despesas dos últimos 6 meses
 - Atalhos rápidos para cada módulo
