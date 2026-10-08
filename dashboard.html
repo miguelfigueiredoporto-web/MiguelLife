@@ -85,7 +85,7 @@
           <div>
             <div class="stat-label">Despesas Fixas</div>
             <div class="stat-value text-red" id="stat-despesas">—</div>
-            <div class="stat-sub">imóveis + despesas pessoais</div>
+            <div class="stat-sub">despesas de imóveis</div>
           </div>
           <div class="stat-icon" style="background:var(--red-dim);">
             <i data-lucide="arrow-down" width="18" height="18" style="color:var(--red);"></i>
@@ -384,16 +384,19 @@
     const rendaFontes    = fontesAtivas.reduce((s, f) => s + valorMensalFonte(f), 0);
     const rendimentoMensal = rendaImoveis + rendaFontes;
 
-    // Despesas fixas = condomínios + IMI + seguros + outros custos dos imóveis
-    // + despesas pessoais activas (módulo Despesas)
+    // Despesas fixas = só despesas de imóveis: condomínios + IMI + seguros + outros custos fixos
+    // dos imóveis, mais as despesas do módulo Despesas que estão ligadas a um imóvel (ex: condomínio
+    // registado a partir da ficha do imóvel). Despesas pessoais não entram aqui.
     const despesasImoveis = imoveisAtivos.reduce((s, i) => {
       return s + (Number(i.condominio_mensal) || 0)
                + (Number(i.imi_anual) || 0) / 12
                + (Number(i.seguros_anuais) || 0) / 12
                + (Number(i.outros_custos_anuais) || 0) / 12;
     }, 0);
-    const despesasPessoais = despesas.reduce((s, d) => s + (Number(d.valor_mensal) || 0), 0);
-    const despesasFixas = despesasImoveis + despesasPessoais;
+    const despesasImoveisRegistadas = despesas
+      .filter(d => d.imovel_id)
+      .reduce((s, d) => s + (Number(d.valor_mensal) || 0), 0);
+    const despesasFixas = despesasImoveis + despesasImoveisRegistadas;
 
     const saldoMensal = rendimentoMensal - despesasFixas;
 

@@ -40,7 +40,7 @@ App web pessoal para gestão financeira e de vida do Miguel. Funciona como um "e
 ### 1. Dashboard (Página Inicial)
 Vista geral de tudo. Deve responder imediatamente às perguntas:
 - **Quanto dinheiro entra este mês?** (soma de todas as rendas/rendimentos)
-- **Quanto sai?** (condomínios, IMI, seguros, outros custos fixos, despesas pessoais)
+- **Quanto sai?** (condomínios, IMI, seguros, outros custos fixos dos imóveis — "Despesas Fixas" não inclui despesas pessoais)
 - **Saldo líquido mensal estimado**
 - **Património total** (valor de mercado dos imóveis)
 
