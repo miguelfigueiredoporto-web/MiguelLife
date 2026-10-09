@@ -17,6 +17,7 @@ create table if not exists properties (
   financiamento_banco     text,
   financiamento_prestacao numeric,
   financiamento_taxa      numeric,
+  financiamento_capital_divida numeric, -- capital em dívida actual, preenchido manualmente pelo Miguel
   custos_aquisicao        numeric,
   imi_anual               numeric,
   condominio_mensal       numeric,
@@ -122,15 +123,28 @@ create table if not exists tasks (
   updated_at timestamptz default now()
 );
 
-alter table profiles       enable row level security;
-alter table properties     enable row level security;
-alter table property_works enable row level security;
-alter table income_sources enable row level security;
-alter table income_history enable row level security;
-alter table despesas       enable row level security;
-alter table contratos      enable row level security;
-alter table pagamentos     enable row level security;
-alter table tasks          enable row level security;
+-- Histórico mensal de património (Dashboard → Evolução do Património), um snapshot por mês
+create table if not exists patrimonio_snapshots (
+  id                  uuid primary key default gen_random_uuid(),
+  user_id             uuid references auth.users on delete cascade not null,
+  data_referencia     date not null,
+  patrimonio_bruto    numeric not null,
+  divida_bancaria     numeric not null,
+  patrimonio_liquido  numeric not null,
+  created_at          timestamptz default now(),
+  unique (user_id, data_referencia)
+);
+
+alter table profiles             enable row level security;
+alter table properties           enable row level security;
+alter table property_works       enable row level security;
+alter table income_sources       enable row level security;
+alter table income_history       enable row level security;
+alter table despesas             enable row level security;
+alter table contratos            enable row level security;
+alter table pagamentos           enable row level security;
+alter table tasks                enable row level security;
+alter table patrimonio_snapshots enable row level security;
 
 create policy "profiles_policy" on profiles
   for all using (auth.uid() = id);
@@ -155,6 +169,9 @@ create policy "despesas_policy" on despesas
   for all using (auth.uid() = user_id);
 
 create policy "tasks_policy" on tasks
+  for all using (auth.uid() = user_id);
+
+create policy "patrimonio_snapshots_policy" on patrimonio_snapshots
   for all using (auth.uid() = user_id);
 
 create policy "pagamentos_policy" on pagamentos

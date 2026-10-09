@@ -45,10 +45,12 @@ Vista geral de tudo. Deve responder imediatamente às perguntas:
 - **Património total** (valor de mercado dos imóveis)
 
 Componentes:
-- Aviso de rendas em atraso: verificação automática ao abrir a página — se algum imóvel arrendado tiver a renda do mês corrente por pagar depois do dia limite (`dia_limite_pagamento`), aparece um cartão no topo a listar quem está em atraso e há quantos dias, sem ser preciso ir a Arrendamentos conferir
+- Aviso de rendas em atraso: cartão compacto e recolhível (verificação automática ao abrir a página) — mostra só o número de rendas em atraso e o valor total; clicar expande a lista com imóvel, inquilino, montante e dias de atraso. Não altera estados de pagamento, só lê.
+- Cartão "Rendimento Mensal": rendas dos imóveis arrendados + fontes de rendimento activas, com "Despesas dos imóveis" como sub-valor discreto por baixo (já não há cartão "Despesas Fixas" nem "Saldo Mensal" separados)
+- Cartão "Património Imobiliário Bruto": soma do `valor_mercado_atual` dos imóveis não vendidos, com "Dívida Bancária" como sub-valor por baixo — soma de `properties.financiamento_capital_divida` (campo preenchido manualmente por imóvel, não calculado; distingue "0€" de "por preencher" e avisa quando algum imóvel com financiamento ainda não tem o campo preenchido)
 - Resumo de rendas do ano: total recebido desde Janeiro do ano corrente (soma de `pagamentos.valor_pago` com estado "pago") e quantas rendas ainda faltam receber (meses em que o imóvel esteve arrendado, segundo o histórico de `contratos`, sem pagamento registado) — respeita o período real de cada contrato, não assume que um imóvel esteve sempre arrendado
-- Cards de resumo: Rendimento Mensal | Despesas Fixas | Saldo Mensal | Património Total
 - Gráfico de barras: Rendimentos vs Despesas dos últimos 6 meses
+- Gráfico "Evolução do Património": linha com Património Bruto / Dívida Bancária / Património Líquido, com selector 6 meses / 12 meses / desde o início. Os pontos vêm da tabela `patrimonio_snapshots` — um snapshot por mês, criado/actualizado automaticamente (upsert) sempre que o Dashboard é aberto nesse mês, sem servidor nem tarefa agendada. Não há reconstrução de histórico: só existem pontos a partir do primeiro mês em que o Dashboard foi aberto depois desta funcionalidade existir
 - Atalhos rápidos para cada módulo
 - Design: glassmorphism (fundo claro com "luz ambiente" desfocada, cards em vidro fosco translúcido)
 
@@ -63,7 +65,7 @@ Registo e acompanhamento de cada imóvel de investimento.
 - Data de aquisição
 - Valor de aquisição
 - Capital próprio aplicado (entrada)
-- Financiamento (montante, banco, prestação mensal, taxa)
+- Financiamento (montante, banco, prestação mensal, taxa, capital em dívida actual — este último preenchido manualmente pelo Miguel de vez em quando, a app não o calcula/estima)
 - Custos de aquisição (IMT, Imposto de Selo, notário, etc.)
 - Obras realizadas (lista com valor e data)
 - Condomínio mensal
