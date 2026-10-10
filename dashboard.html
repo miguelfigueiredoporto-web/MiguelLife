@@ -170,33 +170,16 @@
         <canvas id="chart-patrimonio"></canvas>
       </div>
       <p id="patrimonio-vazio" style="display:none;font-size:0.75rem;color:var(--text-muted);padding:24px 0;text-align:center;">
-        Ainda não há snapshots suficientes para mostrar uma evolução — cada vez que abrires o Dashboard num mês novo, fica aqui registado um ponto novo.
-      </p>
-      <p id="patrimonio-um-ponto" style="display:none;font-size:0.68rem;color:var(--text-muted);margin-top:6px;">
-        Só há 1 mês registado (este) — a linha aparece a partir do próximo mês em que abrires o Dashboard.
+        Ainda não há dados suficientes para mostrar uma evolução.
       </p>
       <div style="display:flex;gap:14px;margin-top:10px;font-size:0.7rem;color:var(--text-muted);flex-wrap:wrap;">
         <span><span class="dot-legenda" style="background:#64a6e8;"></span>Património Bruto</span>
         <span><span class="dot-legenda" style="background:#ff4558;"></span>Dívida Bancária</span>
         <span><span class="dot-legenda" style="background:#30d178;"></span>Património Líquido</span>
+        <span><span class="dot-legenda" style="background:#af52de;"></span>Capital Investido</span>
       </div>
-    </div>
-
-    <!-- Capital Investido ao Longo do Tempo — reconstruído a partir da data de aquisição de cada
-         imóvel (dados reais, não é uma estimativa do valor de mercado no passado) -->
-    <div class="card card-glass" style="margin-top:12px;padding:16px;" id="card-capital-investido">
-      <div class="card-header" style="margin-bottom:8px;">
-        <span class="card-title" style="font-size:0.82rem;">Capital Investido ao Longo do Tempo</span>
-      </div>
-      <div style="position:relative;height:150px;margin-top:6px;" id="investido-chart-wrap">
-        <canvas id="chart-investido"></canvas>
-      </div>
-      <p id="investido-vazio" style="display:none;font-size:0.75rem;color:var(--text-muted);padding:24px 0;text-align:center;">
-        Nenhum imóvel activo com data de aquisição registada.
-      </p>
       <p style="margin-top:8px;font-size:0.65rem;color:var(--text-muted);line-height:1.4;">
-        Soma do valor de aquisição + custos de aquisição + obras de cada imóvel (excluindo vendidos),
-        a partir da respectiva data de compra — capital que colocaste, não o valor de mercado.
+        Património Bruto/Dívida/Líquido: só a partir de agora, um ponto por mês em que abrires o Dashboard (sem histórico antigo). Capital Investido: soma do valor de aquisição + custos + obras de cada imóvel desde a respectiva data de compra — é o capital que colocaste, não o valor de mercado.
       </p>
     </div>
 
@@ -578,92 +561,9 @@
       .order('data_referencia', { ascending: true });
     const snapshots = snapshotsData || [];
 
-    function filtrarSnapshotsPorPeriodo(periodo) {
-      if (periodo === 'tudo') return snapshots;
-      const nMeses = periodo === '12m' ? 12 : 6;
-      const corte = subMeses(anoAtual, mesAtual, nMeses - 1);
-      const corteStr = `${corte.ano}-${String(corte.mes).padStart(2, '0')}-01`;
-      return snapshots.filter(s => s.data_referencia >= corteStr);
-    }
-
-    let chartPatrimonio = null;
-
-    function renderGraficoPatrimonio(periodo) {
-      const dadosFiltrados = filtrarSnapshotsPorPeriodo(periodo);
-      const wrap = document.getElementById('patrimonio-chart-wrap');
-      const vazio = document.getElementById('patrimonio-vazio');
-
-      const umPonto = document.getElementById('patrimonio-um-ponto');
-      if (dadosFiltrados.length === 0) {
-        wrap.style.display = 'none';
-        vazio.style.display = 'block';
-        umPonto.style.display = 'none';
-        return;
-      }
-      wrap.style.display = 'block';
-      vazio.style.display = 'none';
-      umPonto.style.display = dadosFiltrados.length === 1 ? 'block' : 'none';
-
-      const ctxPatrimonio = document.getElementById('chart-patrimonio');
-      if (!ctxPatrimonio || !window.Chart) return;
-
-      const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-      const labels = dadosFiltrados.map(s => {
-        const [a, m] = s.data_referencia.split('-');
-        return `${MESES_ABREV[Number(m) - 1]}/${a.slice(2)}`;
-      });
-
-      if (chartPatrimonio) { chartPatrimonio.destroy(); chartPatrimonio = null; }
-
-      chartPatrimonio = new Chart(ctxPatrimonio, {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            {
-              label: 'Património Bruto', data: dadosFiltrados.map(s => Number(s.patrimonio_bruto)),
-              borderColor: '#64a6e8', backgroundColor: 'rgba(100,166,232,0.08)',
-              borderWidth: 2, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, fill: false,
-            },
-            {
-              label: 'Dívida Bancária', data: dadosFiltrados.map(s => Number(s.divida_bancaria)),
-              borderColor: '#ff4558', backgroundColor: 'rgba(255,69,88,0.08)',
-              borderWidth: 2, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, fill: false,
-            },
-            {
-              label: 'Património Líquido', data: dadosFiltrados.map(s => Number(s.patrimonio_liquido)),
-              borderColor: '#30d178', backgroundColor: 'rgba(48,209,120,0.1)',
-              borderWidth: 2.5, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, fill: false,
-            },
-          ],
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          animation: { duration: 400 },
-          scales: {
-            x: { grid: { display: false }, ticks: { color: corMuted, font: { size: 10 } } },
-            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: corMuted, font: { size: 9 }, callback: v => fmt(v) } },
-          },
-          plugins: {
-            legend: { display: false },
-            datalabels: { display: false },
-            tooltip: {
-              backgroundColor: 'rgba(20,20,28,0.9)',
-              padding: 10,
-              cornerRadius: 8,
-              callbacks: { label: c => ` ${c.dataset.label}: ${fmtEUR(c.raw)}` },
-            },
-          },
-        },
-      });
-    }
-
-    renderGraficoPatrimonio('6m');
-
-    // ---- Capital Investido ao Longo do Tempo ----
-    // Reconstruído a partir de dados reais e datados (data_aquisicao de cada imóvel) — não é uma
-    // estimativa do valor de mercado no passado, é o capital que entrou em cada compra.
+    // Capital Investido: soma acumulada (valor de aquisição + custos de aquisição + obras) de cada
+    // imóvel activo, a partir da respectiva data_aquisicao — dados reais e datados, não é uma
+    // estimativa do valor de mercado no passado.
     function investimentoTotalImovel(im) {
       const obras = (im.property_works || []).reduce((s, o) => s + (Number(o.valor) || 0), 0);
       return (Number(im.valor_aquisicao) || 0) + (Number(im.custos_aquisicao) || 0) + obras;
@@ -674,71 +574,121 @@
       .slice()
       .sort((a, b) => a.data_aquisicao.localeCompare(b.data_aquisicao));
 
-    const vazioInvestido = document.getElementById('investido-vazio');
-    const wrapInvestido = document.getElementById('investido-chart-wrap');
-
-    if (imoveisComDataAquisicao.length === 0) {
-      wrapInvestido.style.display = 'none';
-      vazioInvestido.style.display = 'block';
-    } else {
-      wrapInvestido.style.display = 'block';
-      vazioInvestido.style.display = 'none';
-
-      let acumulado = 0;
-      const pontosInvestido = imoveisComDataAquisicao.map(im => {
-        acumulado += investimentoTotalImovel(im);
-        return { data: im.data_aquisicao, valor: acumulado, nome: im.nome };
-      });
-      const hojeISO = hoje.toISOString().slice(0, 10);
-      if (pontosInvestido[pontosInvestido.length - 1].data < hojeISO) {
-        pontosInvestido.push({ data: hojeISO, valor: acumulado, nome: null });
-      }
-
-      const ctxInvestido = document.getElementById('chart-investido');
-      if (ctxInvestido && window.Chart) {
-        const MESES_ABREV_INVESTIDO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-        const labelsInvestido = pontosInvestido.map(p => {
-          const [a, m] = p.data.split('-');
-          return `${MESES_ABREV_INVESTIDO[Number(m) - 1]}/${a.slice(2)}`;
-        });
-        const nomesInvestido = pontosInvestido.map(p => p.nome);
-
-        new Chart(ctxInvestido, {
-          type: 'line',
-          data: {
-            labels: labelsInvestido,
-            datasets: [{
-              label: 'Capital Investido',
-              data: pontosInvestido.map(p => p.valor),
-              borderColor: '#af52de', backgroundColor: 'rgba(175,82,222,0.1)',
-              borderWidth: 2.5, stepped: 'before', pointRadius: 3, pointHoverRadius: 5, fill: true,
-            }],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: { duration: 400 },
-            scales: {
-              x: { grid: { display: false }, ticks: { color: corMuted, font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
-              y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: corMuted, font: { size: 9 }, callback: v => fmt(v) } },
-            },
-            plugins: {
-              legend: { display: false },
-              datalabels: { display: false },
-              tooltip: {
-                backgroundColor: 'rgba(20,20,28,0.9)',
-                padding: 10,
-                cornerRadius: 8,
-                callbacks: {
-                  title: items => nomesInvestido[items[0].dataIndex] || 'Hoje',
-                  label: c => ` Capital investido acumulado: ${fmtEUR(c.raw)}`,
-                },
-              },
-            },
-          },
-        });
-      }
+    const hojeISO = hoje.toISOString().slice(0, 10);
+    let acumuladoInvestido = 0;
+    const pontosInvestido = imoveisComDataAquisicao.map(im => {
+      acumuladoInvestido += investimentoTotalImovel(im);
+      return { data: im.data_aquisicao, valor: acumuladoInvestido };
+    });
+    if (pontosInvestido.length > 0 && pontosInvestido[pontosInvestido.length - 1].data < hojeISO) {
+      pontosInvestido.push({ data: hojeISO, valor: acumuladoInvestido });
     }
+
+    function valorInvestidoNaData(dataAlvo) {
+      let valor = 0;
+      for (const p of pontosInvestido) {
+        if (p.data <= dataAlvo) valor = p.valor; else break;
+      }
+      return valor;
+    }
+
+    function filtrarDatasPorPeriodo(periodo, datas) {
+      if (periodo === 'tudo') return datas;
+      const nMeses = periodo === '12m' ? 12 : 6;
+      const corte = subMeses(anoAtual, mesAtual, nMeses - 1);
+      const corteStr = `${corte.ano}-${String(corte.mes).padStart(2, '0')}-01`;
+      return datas.filter(d => d >= corteStr);
+    }
+
+    let chartPatrimonio = null;
+
+    function renderGraficoPatrimonio(periodo) {
+      const wrap = document.getElementById('patrimonio-chart-wrap');
+      const vazio = document.getElementById('patrimonio-vazio');
+
+      // eixo X unificado: datas dos snapshots mensais + datas de aquisição (+ hoje), dentro do período
+      const datasSnapshots = snapshots.map(s => s.data_referencia);
+      const datasInvestido = pontosInvestido.map(p => p.data);
+      const todasDatas = [...new Set([...datasSnapshots, ...datasInvestido])].sort();
+      const datasFiltradas = filtrarDatasPorPeriodo(periodo, todasDatas);
+
+      if (datasFiltradas.length === 0) {
+        wrap.style.display = 'none';
+        vazio.style.display = 'block';
+        return;
+      }
+      wrap.style.display = 'block';
+      vazio.style.display = 'none';
+
+      const ctxPatrimonio = document.getElementById('chart-patrimonio');
+      if (!ctxPatrimonio || !window.Chart) return;
+
+      const MESES_ABREV = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+      const labels = datasFiltradas.map(d => {
+        const [a, m] = d.split('-');
+        return `${MESES_ABREV[Number(m) - 1]}/${a.slice(2)}`;
+      });
+
+      const mapaSnapshots = {};
+      snapshots.forEach(s => { mapaSnapshots[s.data_referencia] = s; });
+
+      const dadosBruto   = datasFiltradas.map(d => mapaSnapshots[d] ? Number(mapaSnapshots[d].patrimonio_bruto) : null);
+      const dadosDivida  = datasFiltradas.map(d => mapaSnapshots[d] ? Number(mapaSnapshots[d].divida_bancaria) : null);
+      const dadosLiquido = datasFiltradas.map(d => mapaSnapshots[d] ? Number(mapaSnapshots[d].patrimonio_liquido) : null);
+      const dadosInvestido = datasFiltradas.map(d => valorInvestidoNaData(d));
+
+      if (chartPatrimonio) { chartPatrimonio.destroy(); chartPatrimonio = null; }
+
+      chartPatrimonio = new Chart(ctxPatrimonio, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Património Bruto', data: dadosBruto,
+              borderColor: '#64a6e8', backgroundColor: 'rgba(100,166,232,0.08)',
+              borderWidth: 2, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, fill: false,
+            },
+            {
+              label: 'Dívida Bancária', data: dadosDivida,
+              borderColor: '#ff4558', backgroundColor: 'rgba(255,69,88,0.08)',
+              borderWidth: 2, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, fill: false,
+            },
+            {
+              label: 'Património Líquido', data: dadosLiquido,
+              borderColor: '#30d178', backgroundColor: 'rgba(48,209,120,0.1)',
+              borderWidth: 2.5, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, fill: false,
+            },
+            {
+              label: 'Capital Investido', data: dadosInvestido,
+              borderColor: '#af52de', backgroundColor: 'rgba(175,82,222,0.08)',
+              borderWidth: 2, stepped: 'before', pointRadius: 1.5, pointHoverRadius: 4, fill: false,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 400 },
+          scales: {
+            x: { grid: { display: false }, ticks: { color: corMuted, font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 } },
+            y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: corMuted, font: { size: 9 }, callback: v => fmt(v) } },
+          },
+          plugins: {
+            legend: { display: false },
+            datalabels: { display: false },
+            tooltip: {
+              backgroundColor: 'rgba(20,20,28,0.9)',
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: { label: c => c.raw == null ? null : ` ${c.dataset.label}: ${fmtEUR(c.raw)}` },
+            },
+          },
+        },
+      });
+    }
+
+    renderGraficoPatrimonio('6m');
 
     document.querySelectorAll('.periodo-btn').forEach(btn => {
       btn.addEventListener('click', () => {
