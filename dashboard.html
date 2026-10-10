@@ -172,11 +172,32 @@
       <p id="patrimonio-vazio" style="display:none;font-size:0.75rem;color:var(--text-muted);padding:24px 0;text-align:center;">
         Ainda não há snapshots suficientes para mostrar uma evolução — cada vez que abrires o Dashboard num mês novo, fica aqui registado um ponto novo.
       </p>
+      <p id="patrimonio-um-ponto" style="display:none;font-size:0.68rem;color:var(--text-muted);margin-top:6px;">
+        Só há 1 mês registado (este) — a linha aparece a partir do próximo mês em que abrires o Dashboard.
+      </p>
       <div style="display:flex;gap:14px;margin-top:10px;font-size:0.7rem;color:var(--text-muted);flex-wrap:wrap;">
         <span><span class="dot-legenda" style="background:#64a6e8;"></span>Património Bruto</span>
         <span><span class="dot-legenda" style="background:#ff4558;"></span>Dívida Bancária</span>
         <span><span class="dot-legenda" style="background:#30d178;"></span>Património Líquido</span>
       </div>
+    </div>
+
+    <!-- Capital Investido ao Longo do Tempo — reconstruído a partir da data de aquisição de cada
+         imóvel (dados reais, não é uma estimativa do valor de mercado no passado) -->
+    <div class="card card-glass" style="margin-top:12px;padding:16px;" id="card-capital-investido">
+      <div class="card-header" style="margin-bottom:8px;">
+        <span class="card-title" style="font-size:0.82rem;">Capital Investido ao Longo do Tempo</span>
+      </div>
+      <div style="position:relative;height:150px;margin-top:6px;" id="investido-chart-wrap">
+        <canvas id="chart-investido"></canvas>
+      </div>
+      <p id="investido-vazio" style="display:none;font-size:0.75rem;color:var(--text-muted);padding:24px 0;text-align:center;">
+        Nenhum imóvel activo com data de aquisição registada.
+      </p>
+      <p style="margin-top:8px;font-size:0.65rem;color:var(--text-muted);line-height:1.4;">
+        Soma do valor de aquisição + custos de aquisição + obras de cada imóvel (excluindo vendidos),
+        a partir da respectiva data de compra — capital que colocaste, não o valor de mercado.
+      </p>
     </div>
 
     <!-- Atalhos rápidos -->
@@ -278,7 +299,7 @@
       { data: pagamentosHistorico },
       { data: pagamentosMesAtual },
     ] = await Promise.all([
-      sb.from('properties').select('*'),
+      sb.from('properties').select('*, property_works(*)'),
       sb.from('income_sources').select('*').eq('ativo', true),
       sb.from('tasks').select('*').neq('estado', 'concluida'),
       sb.from('despesas').select('*').eq('ativo', true).gte('data', primeiroDiaMes).lte('data', ultimoDiaMes),
@@ -572,13 +593,16 @@
       const wrap = document.getElementById('patrimonio-chart-wrap');
       const vazio = document.getElementById('patrimonio-vazio');
 
+      const umPonto = document.getElementById('patrimonio-um-ponto');
       if (dadosFiltrados.length === 0) {
         wrap.style.display = 'none';
         vazio.style.display = 'block';
+        umPonto.style.display = 'none';
         return;
       }
       wrap.style.display = 'block';
       vazio.style.display = 'none';
+      umPonto.style.display = dadosFiltrados.length === 1 ? 'block' : 'none';
 
       const ctxPatrimonio = document.getElementById('chart-patrimonio');
       if (!ctxPatrimonio || !window.Chart) return;
@@ -636,6 +660,84 @@
     }
 
     renderGraficoPatrimonio('6m');
+
+    // ---- Capital Investido ao Longo do Tempo ----
+    // Reconstruído a partir de dados reais e datados (data_aquisicao de cada imóvel) — não é uma
+    // estimativa do valor de mercado no passado, é o capital que entrou em cada compra.
+    function investimentoTotalImovel(im) {
+      const obras = (im.property_works || []).reduce((s, o) => s + (Number(o.valor) || 0), 0);
+      return (Number(im.valor_aquisicao) || 0) + (Number(im.custos_aquisicao) || 0) + obras;
+    }
+
+    const imoveisComDataAquisicao = imoveisAtivos
+      .filter(im => im.data_aquisicao)
+      .slice()
+      .sort((a, b) => a.data_aquisicao.localeCompare(b.data_aquisicao));
+
+    const vazioInvestido = document.getElementById('investido-vazio');
+    const wrapInvestido = document.getElementById('investido-chart-wrap');
+
+    if (imoveisComDataAquisicao.length === 0) {
+      wrapInvestido.style.display = 'none';
+      vazioInvestido.style.display = 'block';
+    } else {
+      wrapInvestido.style.display = 'block';
+      vazioInvestido.style.display = 'none';
+
+      let acumulado = 0;
+      const pontosInvestido = imoveisComDataAquisicao.map(im => {
+        acumulado += investimentoTotalImovel(im);
+        return { data: im.data_aquisicao, valor: acumulado, nome: im.nome };
+      });
+      const hojeISO = hoje.toISOString().slice(0, 10);
+      if (pontosInvestido[pontosInvestido.length - 1].data < hojeISO) {
+        pontosInvestido.push({ data: hojeISO, valor: acumulado, nome: null });
+      }
+
+      const ctxInvestido = document.getElementById('chart-investido');
+      if (ctxInvestido && window.Chart) {
+        const labelsInvestido = pontosInvestido.map(p => {
+          const [a, m, d] = p.data.split('-');
+          return `${d}/${m}/${a.slice(2)}`;
+        });
+        const nomesInvestido = pontosInvestido.map(p => p.nome);
+
+        new Chart(ctxInvestido, {
+          type: 'line',
+          data: {
+            labels: labelsInvestido,
+            datasets: [{
+              label: 'Capital Investido',
+              data: pontosInvestido.map(p => p.valor),
+              borderColor: '#af52de', backgroundColor: 'rgba(175,82,222,0.1)',
+              borderWidth: 2.5, stepped: 'before', pointRadius: 3, pointHoverRadius: 5, fill: true,
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 400 },
+            scales: {
+              x: { grid: { display: false }, ticks: { color: corMuted, font: { size: 9 }, maxRotation: 0, autoSkip: true, maxTicksLimit: 6 } },
+              y: { grid: { color: 'rgba(0,0,0,0.05)' }, ticks: { color: corMuted, font: { size: 9 }, callback: v => fmt(v) } },
+            },
+            plugins: {
+              legend: { display: false },
+              datalabels: { display: false },
+              tooltip: {
+                backgroundColor: 'rgba(20,20,28,0.9)',
+                padding: 10,
+                cornerRadius: 8,
+                callbacks: {
+                  title: items => nomesInvestido[items[0].dataIndex] || 'Hoje',
+                  label: c => ` Capital investido acumulado: ${fmtEUR(c.raw)}`,
+                },
+              },
+            },
+          },
+        });
+      }
+    }
 
     document.querySelectorAll('.periodo-btn').forEach(btn => {
       btn.addEventListener('click', () => {
