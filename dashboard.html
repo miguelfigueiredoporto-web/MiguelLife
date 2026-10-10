@@ -177,9 +177,10 @@
         <span><span class="dot-legenda" style="background:#ff4558;"></span>Dívida Bancária</span>
         <span><span class="dot-legenda" style="background:#30d178;"></span>Património Líquido</span>
         <span><span class="dot-legenda" style="background:#af52de;"></span>Capital Investido</span>
+        <span><span class="dot-legenda" style="background:#ff9500;"></span>Montante Financiado</span>
       </div>
       <p style="margin-top:8px;font-size:0.65rem;color:var(--text-muted);line-height:1.4;">
-        Património Bruto/Dívida/Líquido: só a partir de agora, um ponto por mês em que abrires o Dashboard (sem histórico antigo). Capital Investido: soma do valor de aquisição + custos + obras de cada imóvel desde a respectiva data de compra — é o capital que colocaste, não o valor de mercado.
+        Património Bruto/Dívida/Líquido: só a partir de agora, um ponto por mês em que abrires o Dashboard (sem histórico antigo). Capital Investido: soma do valor de aquisição + custos + obras de cada imóvel desde a respectiva data de compra — é o capital que colocaste, não o valor de mercado. Montante Financiado: soma dos valores originais de cada empréstimo desde a data de compra do respectivo imóvel — não desce com as amortizações, por isso não é o mesmo que a Dívida Bancária actual.
       </p>
     </div>
 
@@ -592,6 +593,32 @@
       return valor;
     }
 
+    // Montante Financiado: soma acumulada do financiamento_montante (valor ORIGINAL de cada
+    // empréstimo, não o saldo actual) na data_aquisicao de cada imóvel financiado. Mostra quando a
+    // dívida foi contraída, mas não desce com as amortizações — não confundir com "Dívida Bancária"
+    // (saldo actual, de patrimonio_snapshots).
+    const imoveisComFinanciamentoDatado = imoveisAtivos
+      .filter(im => im.data_aquisicao && Number(im.financiamento_montante) > 0)
+      .slice()
+      .sort((a, b) => a.data_aquisicao.localeCompare(b.data_aquisicao));
+
+    let acumuladoFinanciado = 0;
+    const pontosFinanciado = imoveisComFinanciamentoDatado.map(im => {
+      acumuladoFinanciado += Number(im.financiamento_montante) || 0;
+      return { data: im.data_aquisicao, valor: acumuladoFinanciado };
+    });
+    if (pontosFinanciado.length > 0 && pontosFinanciado[pontosFinanciado.length - 1].data < hojeISO) {
+      pontosFinanciado.push({ data: hojeISO, valor: acumuladoFinanciado });
+    }
+
+    function montanteFinanciadoNaData(dataAlvo) {
+      let valor = 0;
+      for (const p of pontosFinanciado) {
+        if (p.data <= dataAlvo) valor = p.valor; else break;
+      }
+      return valor;
+    }
+
     function filtrarDatasPorPeriodo(periodo, datas) {
       if (periodo === 'tudo') return datas;
       const nMeses = periodo === '12m' ? 12 : 6;
@@ -609,7 +636,8 @@
       // eixo X unificado: datas dos snapshots mensais + datas de aquisição (+ hoje), dentro do período
       const datasSnapshots = snapshots.map(s => s.data_referencia);
       const datasInvestido = pontosInvestido.map(p => p.data);
-      const todasDatas = [...new Set([...datasSnapshots, ...datasInvestido])].sort();
+      const datasFinanciado = pontosFinanciado.map(p => p.data);
+      const todasDatas = [...new Set([...datasSnapshots, ...datasInvestido, ...datasFinanciado])].sort();
       const datasFiltradas = filtrarDatasPorPeriodo(periodo, todasDatas);
 
       if (datasFiltradas.length === 0) {
@@ -636,6 +664,7 @@
       const dadosDivida  = datasFiltradas.map(d => mapaSnapshots[d] ? Number(mapaSnapshots[d].divida_bancaria) : null);
       const dadosLiquido = datasFiltradas.map(d => mapaSnapshots[d] ? Number(mapaSnapshots[d].patrimonio_liquido) : null);
       const dadosInvestido = datasFiltradas.map(d => valorInvestidoNaData(d));
+      const dadosFinanciado = datasFiltradas.map(d => montanteFinanciadoNaData(d));
 
       if (chartPatrimonio) { chartPatrimonio.destroy(); chartPatrimonio = null; }
 
@@ -662,6 +691,11 @@
             {
               label: 'Capital Investido', data: dadosInvestido,
               borderColor: '#af52de', backgroundColor: 'rgba(175,82,222,0.08)',
+              borderWidth: 2, stepped: 'before', pointRadius: 1.5, pointHoverRadius: 4, fill: false,
+            },
+            {
+              label: 'Montante Financiado', data: dadosFinanciado,
+              borderColor: '#ff9500', backgroundColor: 'rgba(255,149,0,0.08)',
               borderWidth: 2, stepped: 'before', pointRadius: 1.5, pointHoverRadius: 4, fill: false,
             },
           ],

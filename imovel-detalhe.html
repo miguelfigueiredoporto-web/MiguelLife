@@ -690,7 +690,6 @@
     const totalCondominio = despesasCondominio.reduce((s, d) => s + (Number(d.valor_mensal) || 0), 0);
     const totalDespesasImovel = despesasImovel.reduce((s, d) => s + (Number(d.valor_mensal) || 0), 0);
     const totalCustosImovel = (Number(im.valor_aquisicao)||0) + (Number(im.custos_aquisicao)||0)
-      + (Number(im.financiamento_montante)||0) + (Number(im.financiamento_prestacao)||0)
       + totalObras + totalDespesasImovel;
     const investimentoTotal = (Number(im.valor_aquisicao)||0) + (Number(im.custos_aquisicao)||0) + totalObras;
     const yieldBruta = im.renda_mensal && investimentoTotal ? (im.renda_mensal*12/investimentoTotal)*100 : null;
