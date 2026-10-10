@@ -696,9 +696,10 @@
 
       const ctxInvestido = document.getElementById('chart-investido');
       if (ctxInvestido && window.Chart) {
+        const MESES_ABREV_INVESTIDO = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
         const labelsInvestido = pontosInvestido.map(p => {
-          const [a, m, d] = p.data.split('-');
-          return `${d}/${m}/${a.slice(2)}`;
+          const [a, m] = p.data.split('-');
+          return `${MESES_ABREV_INVESTIDO[Number(m) - 1]}/${a.slice(2)}`;
         });
         const nomesInvestido = pontosInvestido.map(p => p.nome);
 
