@@ -177,10 +177,9 @@
         <span><span class="dot-legenda" style="background:#ff4558;"></span>Dívida Bancária</span>
         <span><span class="dot-legenda" style="background:#30d178;"></span>Património Líquido</span>
         <span><span class="dot-legenda" style="background:#af52de;"></span>Capital Investido</span>
-        <span><span class="dot-legenda" style="background:#ff9500;"></span>Montante Financiado</span>
       </div>
       <p style="margin-top:8px;font-size:0.65rem;color:var(--text-muted);line-height:1.4;">
-        Património Bruto/Dívida/Líquido: só a partir de agora, um ponto por mês em que abrires o Dashboard (sem histórico antigo). Capital Investido: soma do valor de aquisição + custos + obras de cada imóvel desde a respectiva data de compra — é o capital que colocaste, não o valor de mercado. Montante Financiado: soma dos valores originais de cada empréstimo desde a data de compra do respectivo imóvel — não desce com as amortizações, por isso não é o mesmo que a Dívida Bancária actual.
+        Património Bruto/Líquido: só a partir de agora, um ponto por mês em que abrires o Dashboard (sem histórico antigo). Dívida Bancária: antes do primeiro mês registado usa o valor original de cada empréstimo por data de compra (não desce com amortizações); a partir daí usa sempre o saldo actual real que preenches. Capital Investido: soma do valor de aquisição + custos + obras de cada imóvel desde a respectiva data de compra — é o capital que colocaste, não o valor de mercado.
       </p>
     </div>
 
@@ -659,12 +658,19 @@
 
       const mapaSnapshots = {};
       snapshots.forEach(s => { mapaSnapshots[s.data_referencia] = s; });
+      const primeiraDataSnapshot = snapshots.length > 0 ? snapshots[0].data_referencia : null;
 
       const dadosBruto   = datasFiltradas.map(d => mapaSnapshots[d] ? Number(mapaSnapshots[d].patrimonio_bruto) : null);
-      const dadosDivida  = datasFiltradas.map(d => mapaSnapshots[d] ? Number(mapaSnapshots[d].divida_bancaria) : null);
+      // Dívida Bancária: antes do primeiro snapshot usa o Montante Financiado (histórico, por data de
+      // aquisição) como aproximação; a partir do primeiro snapshot usa sempre o saldo actual real
+      // (não desce com amortizações nos meses antigos, só muda quando se contrai/liquida um empréstimo)
+      const dadosDivida  = datasFiltradas.map(d => {
+        if (mapaSnapshots[d]) return Number(mapaSnapshots[d].divida_bancaria);
+        if (!primeiraDataSnapshot || d < primeiraDataSnapshot) return montanteFinanciadoNaData(d);
+        return null;
+      });
       const dadosLiquido = datasFiltradas.map(d => mapaSnapshots[d] ? Number(mapaSnapshots[d].patrimonio_liquido) : null);
       const dadosInvestido = datasFiltradas.map(d => valorInvestidoNaData(d));
-      const dadosFinanciado = datasFiltradas.map(d => montanteFinanciadoNaData(d));
 
       if (chartPatrimonio) { chartPatrimonio.destroy(); chartPatrimonio = null; }
 
@@ -681,7 +687,7 @@
             {
               label: 'Dívida Bancária', data: dadosDivida,
               borderColor: '#ff4558', backgroundColor: 'rgba(255,69,88,0.08)',
-              borderWidth: 2, tension: 0.3, pointRadius: 2, pointHoverRadius: 4, fill: false,
+              borderWidth: 2, stepped: 'before', pointRadius: 2, pointHoverRadius: 4, fill: false,
             },
             {
               label: 'Património Líquido', data: dadosLiquido,
@@ -691,11 +697,6 @@
             {
               label: 'Capital Investido', data: dadosInvestido,
               borderColor: '#af52de', backgroundColor: 'rgba(175,82,222,0.08)',
-              borderWidth: 2, stepped: 'before', pointRadius: 1.5, pointHoverRadius: 4, fill: false,
-            },
-            {
-              label: 'Montante Financiado', data: dadosFinanciado,
-              borderColor: '#ff9500', backgroundColor: 'rgba(255,149,0,0.08)',
               borderWidth: 2, stepped: 'before', pointRadius: 1.5, pointHoverRadius: 4, fill: false,
             },
           ],
